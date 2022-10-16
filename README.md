@@ -1,1 +1,1 @@
-# introduction-to-computer-graphics-programming
+# Introduction to Computer Graphics Programming
