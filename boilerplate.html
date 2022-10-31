@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>[Homework] Lab 02.01 - Ambient and SpotLight</title>
+    <script type="text/javascript" src="three.js"></script>
+    <script type="text/javascript" src="stats.js"></script>
+    <script type="text/javascript" src="dat.gui.js"></script>
+    <script type="text/javascript" src="OrbitControls.js"></script>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="webgl"></canvas>
+    <div id="stats"></div>
+
+    <script>
+      /*
+       * SETUP
+       */
+      // Canvas
+      const canvas = document.getElementById("webgl");
+      // Scene
+      const scene = new THREE.Scene();
+      // GUI
+      const gui = new dat.GUI();
+      // Statistics
+      const stats = new Stats();
+      stats.setMode(0);
+      stats.domElement.style.position = "absolute";
+      stats.domElement.style.left = "0px";
+      stats.domElement.style.top = "0px";
+      document.getElementById("stats").appendChild(stats.domElement);
+      // Helpers
+      const axesHelper = new THREE.AxesHelper(25);
+      scene.add(axesHelper);
+
+      /*
+       * SIZES
+       */
+      const SIZES = {
+        window: {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        },
+      };
+
+      /*
+       * MATERIALS
+       */
+      const MATERIALS = {
+        basic: {
+          white: new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            side: THREE.DoubleSide,
+          }),
+        },
+      };
+
+      /*
+       * OBJECTS
+       */
+      const plane = new THREE.Mesh(
+        new THREE.PlaneGeometry(50, 50),
+        MATERIALS.basic.white
+      );
+      plane.rotation.x = -0.5 * Math.PI;
+      plane.receiveShadow = true;
+      scene.add(plane);
+
+      /*
+       * LIGHTS
+       */
+
+      /*
+       * CAMERA
+       */
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        SIZES.window.width / SIZES.window.height,
+        0.1,
+        1000
+      );
+      camera.position.x = 20;
+      camera.position.y = 20;
+      camera.position.z = 35;
+      camera.lookAt(new THREE.Vector3(0, 0, 0));
+      scene.add(camera);
+
+      // Controls
+      const controls = new THREE.OrbitControls(camera, canvas);
+      controls.enableDamping = true;
+
+      /*
+       * RENDERER
+       */
+      const renderer = new THREE.WebGLRenderer({
+        canvas,
+      });
+      renderer.setClearColor(new THREE.Color(0xeeeeee));
+
+      /*
+       * EVENTS
+       */
+      // Event handlers
+      const handleResize = () => {
+        // Update window sizes
+        const width = (SIZES.window.width = window.innerWidth);
+        const height = (SIZES.window.height = window.innerHeight);
+
+        // Update camera
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+
+        // Update renderer
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      };
+
+      // Event listeners
+      window.addEventListener("resize", handleResize);
+
+      /*
+       * ANIMATIONS
+       */
+      const clock = new THREE.Clock();
+
+      const update = () => {
+        // Update stats
+        stats.update();
+        // Get elapsed time from the last render
+        const elapsedTime = clock.getElapsedTime();
+        // Call animation functions
+
+        // Render the next frame
+        renderer.render(scene, camera);
+        // Request the new animation frame
+        requestAnimationFrame(update);
+      };
+
+      /*
+       * MAIN
+       */
+      handleResize();
+      update();
+    </script>
+  </body>
+</html>
