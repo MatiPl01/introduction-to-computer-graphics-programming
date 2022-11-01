@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gallery</title>
+    <script type="text/javascript" src="../three.js"></script>
+    <script type="text/javascript" src="../stats.js"></script>
+    <script type="text/javascript" src="../OrbitControls.js"></script>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="webgl"></canvas>
+    <div id="stats"></div>
+
+    <script>
+      const CONFIGS = {
+        cat: {
+          text: `
+            lgbbbdgdgglmldgglgddglpuxslgdghmsssspssuutstuuuttt
+            lgbbbhjfhnttslllplglllmuxullllnttssssuxxxtkksxxutt
+            tlbadrxvoitxxusmllllllntxxssstuuutppsxuxncjpotxuuu
+            slbajyxvvpiuxsllllgdddglpuuuuuttuuspsuxpfkvxxouxxu
+            lgaapyxvonrknlgdddaaaablllssutttuupnntpiuopxyrtxxx
+            ddaavyvookjrjgdbbaaaaaadddgnuuttutpnmmfpnjorxvpxxu
+            ddabyywonoknrhdaaaaaaaaaaaaluxuutssnmfporqqwyyoxuu
+            ddbgyyqnhjoorpgaaaaaaaaaaaagtxuxutpphkrrkjovyyotts
+            bbahywkjhfjorundaaaaaaaaaaaguuuxxutmjpvjenrpwyrnps
+            abamywqkkmkkovxmddddaabdbbdgpssuwxtkwxnkrrnnvyugms
+            abbpywwohknonpxxnhmplhmsmmlglnnorvnrvpqxpjjowyvbgp
+            bbbryvkeeejnnjhjghnmutuxyxsunjhedhhkjorjeejowyvbdp
+            adgpyvjhhheehhhdalxglusnppnxmnyebekhehejnprrvwvbds
+            addnwvqokjcccdbbbhumumhhhllsrryedbdccddjorrrrwrglt
+            bghpvvvojcbbcmphdekuuehhhdepxpkecdhedbbcjkovvwqkru
+            gnlnwvqfccbbpzzzzpjmsnjfhmnxxnjryzzyhccccckqqwrnvv
+            mldgwwqfccbjzysszzpesjefiioypjxzzyyzyececejoqwkpvv
+            mdabovkceccvslglszyciiiiffioftzzldgyzqbceefqwokuwx
+            lbabjifjfbfpllyzxyzokiiiiioorzzzyzyyzycbffckkkvxxx
+            dbabfnjcaacmllxxlpxqkecccfrqvyvtxzxstjabbejiofmuxx
+            baadirkjgeceglpmgrovwqiiqwywoxkchpnhehkkknvkiektux
+            aabhokpxupkmmhdhkifvzzwwzzzwiimjehnkmprvxrrofovtsu
+            dbbfoghumhknlhhkeecbbuyzykffiffhjhpkgkmnmhgpiivutu
+            ngcfxpjllhpnklrmhfbbbgzzlbeffifnrmhpnfmnnrpvqcjuuu
+            rfbkxphdnyypjpneeebbbduxggcccnffkphnyyrjehmpvfckux
+            nccqmedksnpmmhchceehhmxxpljhhhejcchntxyytkhnwiccpx
+            fcioddkphhmnecchmlghmuzzxsnmnlpjehemvxxyyyrovqfcft
+            efqebfrrhhkjcchmhlmpuyzzzxttslmmjecmxxvvxyrfjvqecn
+            fqhbbkxnghjecnmmutpxyyyzzzyxxxxmpukenroruxrebjqoei
+            eebcnwrhhjhepprxsuxyyxxxyyzzyyxxpktqmnnmnppkecfoic
+            ffeormhghgdhjnvrxxyxpnprpvyzzyyyxpmkhhkkmmprofcike
+            fqokheddddeefjkvyyxpojknknvxxyyyxurnmjhhknnmkiikie
+            efheddeeedhjjjrxyxonkhknknvrrxyyyxvvpnpjeehjkkkifc
+            befecdhgghjjmovwvokkjjoqnnvrpuvxxwrrrpnrunjhhjffec
+            bcfijjhmpnkkknppokjnkkoqonvrprrutrpppppptxvqjffecc
+            cefiokrxxxtnkkknnkkmkmoqqprrprrrtrpppprrppqnjiffcc
+            ccfkkkkkpuxxpkjjmnmnnnpprvrvrrutrppppnprqooiiijjfe
+            cfiokffeeikmkhhhkmnpprrrvwvvvvvurrpnnnprokkkkkkkfh
+            ceoqoiffffijfjjjkmnprrrvwwxvvrtrrrrrpnnkifjkknpofh
+            hciokfffikjceiowxwvrqqrrrrrrvrprrrqonjfeffhnrpupem
+            lcfiifiiooecbbcfowyywvrqqoooqqnnoqofjfeffjkovvvnem
+            nlefiioooekiecbbbckyzyyvvqqqrqookkojfjkkkovvwwrfhp
+            uupkjkoobfwvoifccokcwzzywvvvvvvvqookkoqqqvwwwvochs
+            yyuttrooebfqwwoirwiqoqyyyywrrrrvqqqoqrvvqwwwwvkbht
+            yyxxxusswqcacovqriwywyzzzyyyxxxxvwvqqvwwvwwvwrhdnt
+            xyxuutssrwwofcccfwyzzzzzzzzzzzzyyyyyvqqqrvvrrnjtyy
+            xxuusssmkwywwwqowyzyzzzzzzzzzzzzzzzzzyyrpturrptyyx
+            xuxussmeiowyyywwyxyxwzzzzzzzzzzzzzzzzzzzxsxxusuxxu
+            xyxusmccfiioqvyyzzyyxzzzzzzzzzzzzzzzzzzzypxyymmpnl
+            xyyumbbccceecivzzzzzyyzzzzzzzzzzzzzzzzzzysxyxglggh`,
+          colors: {
+            a: 0xcfd6df,
+            b: 0xc3c0bf,
+            c: 0xc1b4a8,
+            d: 0xadb0b4,
+            e: 0xb2a79a,
+            f: 0xad9d8d,
+            g: 0x9da1a1,
+            h: 0x9c9993,
+            i: 0xa5907d,
+            j: 0x9b8f82,
+            k: 0x948a7d,
+            l: 0x868b88,
+            m: 0x85847b,
+            n: 0x837f72,
+            o: 0x887767,
+            p: 0x7c756a,
+            q: 0x7f6c5b,
+            r: 0x776b5d,
+            s: 0x6a7463,
+            t: 0x696c5a,
+            u: 0x676657,
+            v: 0x6d5f50,
+            w: 0x6a5546,
+            x: 0x58554a,
+            y: 0x473e36,
+            z: 0x221f1f,
+          },
+        },
+        dog: {
+          text: `
+            cclllhhhhhhhhbbqqqbbbhlhhhhhhhhhhhbbbbbddbdvcucccc
+            lcllhhhhhhbbbqbttttqbbqbbhhhhhhhhhhbbbbbccwcffffff
+            lcclhhhhhbbqtttaattttttaaqbbbhhhhhhlhbbbbccccccccc
+            lccllhhhbbqttaaaaaaaataaaaaabqbhhhhlllhbblcccccccc
+            cccclhbbbqmttaaaaaaaaaaaaaaaaaqbhhhllllhbbplllclll
+            cccclhbbqmmqqttttaaaaaaaaaaaaaaabhlllllclhbbbbhhhb
+            cccccbbbqmmtmqttbbttaaaaaaaaaeeatbllllllclhbhhhlhh
+            cccccddbqqqqqqqqqqqbbaaaaaaaaaaaatbllclccclhhhllll
+            ccccvvdbqmqbbbbbbbbqbattaaaaaaaaaaadcccccccchhhhhh
+            ccccvddqqqbbdvvvbbbqqtttataaaataaaaadcccccccchhhhh
+            cccivdddddvvvvwwvbbbqbqmttbbbbtaaaaamiuccccccchhhh
+            cuwwzddddddviuuucdbbqqqqqbbqqqbtaaaatdzuccccccchhh
+            cguwiddvvvvvdzygwbbbqqqqbqqqqqqbaaaaanikucccccclhh
+            fguuzvvwuufffgygwbbbqbqbbqqqbbqbaaaaatdkidcccccclb
+            fyuuzwuufrxrrrffyvbqqqqdbbbqbbbqqtaaaanidabcccccch
+            fuuuwuugfrrrfkfrfwbqqbqbqabqbbbbbqtaaaniqaadcccccc
+            fuuuuuufrffrskfxfwbbbbbqtabqbbdizvbaaamiqbaacccccc
+            fyuwuugfrrrrrfrxydbqbbtqaaabbvziffvtatdiqbtabccccc
+            guwuugfgfxxrrrfgvqqqqqttaaaabvnnkfvbaqdzbmbaqwcccc
+            guuugfguyfxxrfgdqbqbqqttaaaaaqmkkgdtamikdbbabvcccc
+            yuuucuuuuugggyvdqqbqqtttaaaaaaqgfudbatzydbmabbccuc
+            uuwwcwuuuwcccvdqbqqttaaaaaeeeeadidbtatdiqtaaoqucuc
+            wivccccwwwwcvbttataaaeeaaaaeeeeeaaaaaatatttaaowgcu
+            izzcccccwuvdqbtaaaeeeeeeammaeeeeeaaaeaaaaaaaaqwfcu
+            wzvccccccvdqqbtaaaeeeeeatnntmaaeeeeeeeeeeeeeaqwfgc
+            wivccccvdqqqqtaaaaaaaaaannnnnnaaeeeeeeeeeeeeeadgfc
+            wzwwwvdbqtqqbaaaaatmtmmnddddiinaeeeeeeeeeaaaaeemuf
+            wwwwvdbqbqqqqqbqtatqddddiikkkkineeeeeeeeeaaaaaaeng
+            cwwzvbbbbbbdvvvvdqqqdkggggggkgkkneeeeaaeeaaaattamk
+            cwzvdqqbbdvwuwvvddddkfssjffgggkkkmeeeeeeeaatmmmddk
+            czvdbbdddvwuwvdbbddijrrjjjfggkgkkkeeeeeeeamtmmmifs
+            vvddddddwwwvvddbqqdkrrrrrrrffffggfneeeeeatmdddndfs
+            vddddddzwvwcvdbqqtdyrxxxjjjxssjsrsdeeeeaattniidiks
+            vddvdiwwvwwdddbqttdgrxjjjjjjrssxjrneeeeaamnnnnndkj
+            vviviuuwwwvvddbqtqigrxxrrjjjrrsssfteeeeaandikkkkgj
+            vvvzuuuuuwwwwvdbqqdkgfsrfrxxxxsfjkaeeeeaaniikkjfjs
+            iiiuuygyuuuwzvddmddiygfrrrxxxxrsfdaeeaaaaankgjssss
+            wzzyyuuwzwwwzddddddizygfxxxxxrrfznaaattatmnkjsssss
+            ziiyuuwivvwuzvddddidzzygffrjxsgkdmaatndmmddkjrssss
+            zzyuuwuzvvwuvvvidiizzzggfyfxrfkzdmaamddddiikjsssss
+            zzyuuwuzwwguwwwzizzkkkggfggrffgidmttddikkikkjsssss
+            yyyyyyyzuyyggyyuggyyyyggggffffgzddqbqiggfkgjsjssss
+            yyuyggyyggggffgfffyggggyggfgggyzzivzkgxsssssssssrr
+            yygfffggffffggffguyykyyzyygyyyuzzzysrssrjsrsssssrr
+            kgffrffffrrfgyzzzzzzzzidzykzyyzivyfrssjfssxssssrxx
+            zfrrfsfrrrffgzvddddizzdiyyzwuzvvyrrssggsrrrrssrrxx
+            ifrrrrrxffgyzvddddviiviyyggyyyygrrxssssssxxrrrxxxj
+            igrrrrxrfgggzzzzzidiizyfrfrjfxrrxxxxsssssrxrrrxxxj
+            dkrxxxjxrffggggggyyyffsxrrrrrjjrxjjjxsssssrxrxxjjj
+            dkrjjjjjxxrrrrrxrrrxxxjjxjxxxrssjjjjjrsssrxxxxxjjj`,
+          colors: {
+            a: 0xe1caa5,
+            b: 0xd1a062,
+            c: 0xa95c23,
+            d: 0xb08b62,
+            e: 0xebdfca,
+            f: 0x513723,
+            g: 0x644730,
+            h: 0xd48b35,
+            i: 0x947556,
+            j: 0x251f1a,
+            k: 0x6f5e4d,
+            l: 0xc57126,
+            m: 0xcbb291,
+            n: 0xb4a189,
+            o: 0xe9c579,
+            p: 0xc37a41,
+            q: 0xcfa771,
+            r: 0x2e231a,
+            s: 0x2d2823,
+            t: 0xd5b88c,
+            u: 0x895832,
+            v: 0xa8784a,
+            w: 0x956439,
+            x: 0x241c16,
+            y: 0x765437,
+            z: 0x8e6946,
+          },
+        },
+        dragon: {
+          text: `
+            ljggfgjmswyyvrljjkurllrrmssrmrmjgggggggfggjklmmmrs
+            mkgggjlmwyvvvywmmwvmllswvrkgjmsmjjgggjkkkllmrssssr
+            sljgjlmvvljjkmwzywmmrwwmjgfffjrmlkkklmmmmrsssrlkkk
+            vskjkmvukgggjmwzwrswwuvlggggjksssssuuvwwwumljjjjgj
+            rwmlmuujgggjmvvrwwwmjjwwssvwwwwwwvrmmmmuwsljgggggg
+            kvsmuujdgglsumlmwsljkmywsmljjkuwrjddddfjsuljgffdff
+            grwuvlgdglwwmlmuyurrmrvjdddddflwmffgggfgkvmjjggfdd
+            gmyymgfjrwwyuuyvmgfggksgdfggjkmvumlkjjggjrukjjgggf
+            glywkgkuummvywmgddddgjsrlmsuvuvwywwurmkkkmvmjjjggg
+            gmywlmwsllrwvrjfdfgkrswywvrmmmrsvrrsuvvussuskjjggg
+            jswvyyrllswrmsljlrwwvuwyrmmrsvvvwvsmlmrssuwvrkkjjj
+            mwlmzyrmuwlggmuwwsmmmuyyxxxxxxxxxxxxwwwvvwwrrsrrml
+            umlwuywwugddjsyyvmrwxxxxxxtqqqtxxxxxxxxxxxwsmlllmm
+            rmwmlwwrgdfkuuuyyxxxtwxzzxqoqqqqqqttxxxxxsswvsllll
+            ryslusmkfgmuruyxtttzzzzzzzqoooooooqqqqtxxxvtttwvsr
+            uvwwsklmkrurvxttqqxzzzzzzzpeeeeiiinnooqqqxxxwssvvr
+            mmysgdflsvuwttxtqoqzzzzzzzpcccceeehhnnnooqqtxxupss
+            luvgddgmuyxttxxqnhizzzyzzztccbceehhhhnnnnooqtttslm
+            uumgdgmrsxttxxqohhozzzvzzzzkicceeeehhhhnnooqqttxlf
+            sjmljmmsxtxxqqonhiijjyuzzvfdbaabccceehhnnnnoopttkg
+            jdfrsrsttxxqonnhedaadzsyzzudaaaaaachheeehhioopttkk
+            kddlvwtttxqfdhhbaabdjzuwzzzpdbaaaaabccehhnnooqtpkp
+            lkjmuxttqkdbihbbceixzzvvzzztfcaabcceeehhhnnooqtplp
+            fmmrvtxqkaaincecccfpzzwszzzzfcbbbcceeeehhnnooqtmpr
+            grvttxxqddinnhheeecfzzymzzzxfbbabbcehhhhnnnnoppppk
+            sswtxxqqoonnhheeeccfxzzsyzzpbbabbceehhhhhnnooppplf
+            svxxxxtqqonnhhheeeccizzyyzzxdaaabcehhhhnhnooqtppjf
+            stxxtqqqoonhhhheecccbmzzyzzxdaaaaacceehheinoqtprll
+            stxtqqqqoonhheeeeecaabtzzzztbaabccccccceeioqqpssmk
+            ptxtqqqoonnnhhhheecbabjzzzzkaaaabcehhhhinooqppsljf
+            mtxxtqqqoonnhhhhhcbbcaakzzzfaaaaabcccennooqppsmlkl
+            pxxtqqqqoonnnnhecceeaaabkzzbaaabceeheehioqqpsrmssr
+            pxxxqqqqoonnnheehhhebbaaaktbaaabccehhhnnoqpsusvsrm
+            ptxtqxtqonnnnnhhhheebaabaadaaaaabcehhnnooppvvumggl
+            ppxtxtqqqoooonnhheeeccecaaaaaaacceehhnokkpuvvumgfj
+            pktxttxtqqqqoonhhhhheecbbbaaabbbcehnnopkpmsurrurmm
+            qkgkmptxxxqqqonhnnneehecccaaabceeeinijjpwrvmjgmkjm
+            kljgjjkpptqqqqooonhhnheceecccccehhfdfkurlsumjmmjll
+            kmuymjkppppppqoooooonnhhhhheeehedddflwmddlvrulkmrg
+            ddmmdddmmjjjlppljgjjiiiiooniifdffkpvwwrfdmsjlkdgrm
+            dgvjddjvgddddgslklmmlkkkkkkjjkmptumjkmsurwvgfrllsm
+            fmylgkvwlllllrvjddfmyrljgggjlmswukdddddgjryrkvmfgl
+            mwywwyywzyywwyyywsmuymjfddddddglulfdddddddkuvwlffg
+            yyyyyyyvyyywvvwwvyzzyyyumljfdddflsjffdddddgkswwsmm
+            vwwwwwwyyyyyyyywurrvywwyyyyyumljlvskjggggglruwwwwu
+            uwsmllmuwywvvyyyyyvuyyuuuvwwyyyywyywvsrrsuwwwwvvvr
+            rvmgdddluwwsrmlmvyyyyyurlmrrsuwwyyywvwwwvvvvvvvvvs
+            mrgddddfluvvmgddjmvuwywsljjjjkmruwyyvssrrrmrrssuus
+            mmgddddfjmsvrgdddglrmuyyslgfffgjlruwvrmlljjjjjlmrr
+            rlggggggjlmmmlgfddglkgmsvrljffdfgkmsurlkjjgggfgjkj`,
+          colors: {
+            a: 0xd9c973,
+            b: 0xc9ad68,
+            c: 0xc59654,
+            d: 0x848f7e,
+            e: 0xc87438,
+            f: 0x7d7970,
+            g: 0x656e6c,
+            h: 0xbc532b,
+            i: 0x8d4d3d,
+            j: 0x5b5f60,
+            k: 0x565155,
+            l: 0x484d51,
+            m: 0x3d4145,
+            n: 0x8f3323,
+            o: 0x632922,
+            p: 0x433337,
+            q: 0x44211f,
+            r: 0x34383d,
+            s: 0x303237,
+            t: 0x302528,
+            u: 0x292d33,
+            v: 0x26292f,
+            w: 0x22242a,
+            x: 0x241e22,
+            y: 0x1a1e24,
+            z: 0x141315,
+          },
+        },
+        parrot: {
+          text: `
+            ssssssssssssuuuuuvvvvvvvvvvvvuuuuuuussssssssssssss
+            sssssssssssstuuuuuvvvvvvususrsuuuusssssssssssssssr
+            sssssssssssuuuuuutlfccccaccbbbbbbfmssssssssssssrrr
+            sssssusssssuuumfcaaaaabbaaaabbbbbbbbbkrsssrrrrrrrr
+            ssusuuuuutumfcaaaaadcaaaccaaaaaaabbbbbbbmrrrrrrrrr
+            rsuuuuuurgdadccccccffcccccddddabbaabbbbbbbkrrrrrrr
+            rsuuuuuleedddgeffccccccccccddcabbaabbbbbbbbbjrrrrr
+            mrsuuuldddddlhddgjfgfffcfcfccccbbcbbbbbbbbbbbbbjrr
+            lmstulddhhdhhhgdgggljjffgggdcccbbcccbbbbbbbbbbbbbf
+            kmrsshdhnnnnnhohddgjjjffffdddaccfbfcccbcbbbbbbbbbb
+            jkmrhhhnnnnnnnndggjllolfjgddddcfffffcfcccbbbbbbbbb
+            ikllhnnnnnppppnhollltolllhhhhggfjgffccccfcbbbbbbbb
+            ijklnpppppnpnnpnoojflooooooojgeefhgggfcfffbbbbbbbb
+            ijkknppppnhpppnnnhiilkloifieaaaaaaeggjjfcffcccbbbc
+            iijkhpppphonpnnhhliijjijfieijeeaaaaeggljjffccccbbb
+            iijkjiolhhoqppnhgllimfefffjlklifbeaaaehooljfffffcc
+            iiijkfuriiioqppngikkmifiifmjmzfibaaaaaagoolfmjffff
+            fiiijksmsjfiopphigljrkklffkefjcjeaaeeaaeloohghffff
+            fffikummrrkiiophinlllimjiifleejjeejkieaeghhhdddddd
+            fffimmkmumumiioniilrikjjiifilmkfeimkkfeedddddddddd
+            fffksrsvsuvvrkihhimrlllkikiffifklliilieedddddddddd
+            eefmusuvuuwwvvskgghlkiklmmikjkmmmkimmigddddddddddd
+            eeistsvvvwyzwwvwmiljilkiilmljiiiififeeeghddddddddd
+            eejstrtuvwwvwwwwytiklglmiiijmmiiilleimkhhhdddddddd
+            eemvtmrtvwwuwuwwywsikikjkllfieejkififeihhhdddddddd
+            eervsmmrvyywuwvvvwyrifekkkljkieeeeeeefghnnhhdddddd
+            eersrmmrsvwvwvvwyvsvskeeesjiemrmkjiiiijonnhddddddd
+            eemmmmkrvwvwwyyzzzwywwsieemkieeeijkljjlnnnhhhddddd
+            eermmkkmsywvyyyyyyzvwzztieemskieeeeemmoppppnhhhddd
+            eermmrtmvywwywwwwyvwyyyyrfeefrmmrrsvuvqqpppnnnhhdd
+            cemrruusvwyyyyywvvuwwwwwwkieeeifklkkrvxxqqppnnnhhd
+            aemsssssvwwyyyyvywyyywywwmfiiiiiiiiiikmvxxqqpnnhhh
+            aamuuussuvyyyywvywyyywywwvmffefiifiifffrzxqqpppnhh
+            aajuuusssvuwyyvywwyywwwwywuiiiefiififffjzzxqpnnnhh
+            aafvvurruurvwwvzwyyywwyyywwmfiieiijiiffkvzxtqnnhhn
+            caeuvvuusssuvvyywyyyywwwyyyvififeiiiffimuvxxqnnnnn
+            eeesvvvvvwuvvyywwyywwwwywyywmfiiiiiffimwyzzzqpnnnp
+            eeekvwwwwwvwyyywyyyywwwwwyyyuiiiijiijmwzzzzzxqpphp
+            eeefuwwwvvuyyyywyyywwwwwwwwysjjjklmrtwzzzzzzxqqqpn
+            eeeemwwwwvvrswywvwyyyywywwwvmkkmstvyzzzzzzzxxqqppp
+            eeeejuuvvvtmkkmruvwyyyyyyyysmszzzyzzzzzzzzzxqqqppp
+            eeeefmttvvrmlkifgjhnpqxzzzxwzzzzzzzzzzzzzzzxqqpppp
+            eeeffjsrtvrmjgfjlohnnqxzzzzzzzzzzzzzzzzzzzyxqqpppo
+            eeeffilrmrmmfjlmohhnnpqzzzyzzzzzzzzzzzzzzzxxqqqqqq
+            eeffiijmrrmrjlooonnnppqxzzxzzzzzzzzzzzzzzxxxqqqqqq
+            fffiijjjlrsvhootonpnppqxxxxxzzzzzzyxxxzyxxxxqqqpqp
+            fiiijjigdhtwnhlllopppqqqxxxxxzzzzzyxxxxxxtqqqqqqpp
+            iijjijdddddowlmmmoopqqqqqqqqqxxzzzzxxxxxxqqqqqqqpp
+            jjjjlhdddhhirusuuuttqqqqqqqqqqqxzzxxxxtqqqqqqqqqqo
+            kkkmthhooljmsuuwvsvwqqqqqqqqqpqqxxxxxxqqqqqpqqqqqt`,
+          colors: {
+            a: 0xdcd5a0,
+            b: 0xb0d2d0,
+            c: 0xc0ba7f,
+            d: 0xefa039,
+            e: 0xc1a281,
+            f: 0xaa9a74,
+            g: 0xbf885f,
+            h: 0xd06d2f,
+            i: 0xa37f6c,
+            j: 0x937d65,
+            k: 0x8d7364,
+            l: 0x896758,
+            m: 0x726257,
+            n: 0xc9491e,
+            o: 0x8a4c30,
+            p: 0xb02b16,
+            q: 0x80240f,
+            r: 0x5c534b,
+            s: 0x524a45,
+            t: 0x4e3b34,
+            u: 0x3e3a39,
+            v: 0x352e2f,
+            w: 0x272325,
+            x: 0x291a19,
+            y: 0x1c1a1e,
+            z: 0x121317,
+          },
+        },
+      };
+
+      class Spotlight extends THREE.Group {
+        #target = null;
+
+        constructor(color, angle = 0.1) {
+          super();
+          this.#createSpotlight(color, angle);
+          this.#target = new THREE.Object3D();
+          this.spotlight.target = this.#target;
+          this.add(this.#target);
+        }
+
+        set target(target) {
+          this.lookAt(target.position);
+        }
+
+        set angle(value) {
+          this.spotlight.angle = value;
+        }
+
+        lookAt(vector) {
+          this.#target.position.set(vector.x / 2, vector.y / 2, vector.z / 2);
+          if (this.coneGroup) this.#updateConeRotation(vector);
+        }
+
+        setPosition(x, y, z) {
+          this.spotlight.position.set(x, y, z);
+          this.position.set(x, y, z);
+        }
+
+        showHelper() {
+          scene.add(new THREE.CameraHelper(this.spotlight.shadow.camera));
+        }
+
+        showCone(color, opacity, height, segments = 25) {
+          const coneGroup = (this.coneGroup = new THREE.Group());
+          const radius = 0.75 * height * Math.tan(this.spotlight.angle * 2);
+          const cone = (this.cone = new THREE.Mesh(
+            new THREE.ConeGeometry(radius, height, segments, 1, true),
+            new THREE.MeshLambertMaterial({
+              opacity,
+              color,
+              transparent: true,
+            })
+          ));
+          const { x, z } = this.spotlight.position;
+          cone.position.set(x, -height / 2, z);
+          coneGroup.add(cone);
+          this.add(coneGroup);
+        }
+
+        #createSpotlight(color, angle) {
+          const spotlight = (this.spotlight = new THREE.SpotLight(color));
+          spotlight.angle = angle;
+          spotlight.penumbra = 0.7;
+          spotlight.shadow.mapSize.width = 2048;
+          spotlight.shadow.mapSize.height = 2048;
+          this.add(spotlight);
+        }
+
+        #updateConeRotation(vector) {
+          const { x, y, z } = this.position;
+          const { x: tx, y: ty, z: tz } = vector;
+          this.coneGroup.rotation.z = -this.#calcRotation(tx - x, ty - y);
+          this.coneGroup.rotation.x = this.#calcRotation(tz - z, ty - y);
+        }
+
+        #calcRotation(dw, dh) {
+          return Math.atan(dw / dh);
+        }
+      }
+
+      class Animation {
+        #intervalRef = null;
+        #elapsedOnStart = 0;
+        #durationOnPause = 0;
+        #direction = 1; // 1 - playing forward, -1 - playing backward
+        static clock = new THREE.Clock();
+        static animations = new Set();
+
+        constructor(fn, duration, interval, alternate) {
+          this.fn = fn;
+          this.duration = duration;
+          this.isPlaying = false;
+          this.isFinished = false;
+          this.interval = interval;
+          this.alternate = alternate || false;
+        }
+
+        play() {
+          this.reset();
+          this.fn(this.#direction == 1 ? 0 : 1);
+          this.isPlaying = true;
+          this.#elapsedOnStart =
+            Animation.clock.getElapsedTime() - this.#durationOnPause;
+          Animation.animations.add(this);
+
+          if (this.interval) {
+            clearInterval(this.#intervalRef);
+            this.#intervalRef = setInterval(() => {
+              if (this.alternate) this.#direction *= -1;
+              this.finish();
+              this.play();
+            }, this.interval * 1000);
+          }
+        }
+
+        pause(shouldClearInterval = true) {
+          this.isPlaying = false;
+          this.#durationOnPause =
+            Animation.clock.getElapsedTime() - this.#elapsedOnStart;
+
+          if (shouldClearInterval && this.#intervalRef) {
+            clearInterval(this.#intervalRef);
+          }
+        }
+
+        finish() {
+          this.pause(false);
+          this.isFinished = true;
+          this.#durationOnPause = 0;
+          Animation.animations.delete(this);
+        }
+
+        reset() {
+          this.isFinished = false;
+          this.isPlaying = false;
+          this.#durationOnPause = 0;
+        }
+
+        update(elapsed) {
+          const progress = this.#calcProgress();
+          this.fn(Math.min(1, progress));
+          if (progress > 1) {
+            this.finish();
+            return;
+          }
+        }
+
+        static update() {
+          Animation.animations.forEach((animation) =>
+            animation.update(Animation.clock.getElapsedTime())
+          );
+        }
+
+        #calcProgress() {
+          const t = Animation.clock.getElapsedTime() - this.#elapsedOnStart;
+          const progress = t / this.duration;
+          return this.#direction == 1 ? progress : 1 - progress;
+        }
+      }
+
+      class Cube extends THREE.Mesh {
+        constructor(w, h, d, ...materials) {
+          const m = materials.length === 1 ? materials[0] : materials;
+          super(new THREE.BoxGeometry(w, d, h), m);
+        }
+      }
+
+      class PixelArt extends THREE.Group {
+        static materials = {};
+
+        constructor(data, width, height) {
+          super();
+          this.width = width;
+          this.height = height;
+          this.data = data.map(({ text, colors }) => ({
+            text: this.#parseText(text, colors),
+            colors,
+          }));
+          this.xSegmentCount = this.data[0].text.length;
+          this.ySegmentCount = this.data[0].text.length;
+          this.segmentWidth = width / this.xSegmentCount;
+          this.segmentHeight = height / this.ySegmentCount;
+          this.depth = this.segmentWidth;
+          this.objects = this.#createObjects();
+          this.position.set(-this.width / 2, this.depth / 2, -this.height / 2);
+          this.currentImage = 0;
+        }
+
+        showNextImage(duration, pixelDuration) {
+          const diagonalCount = this.xSegmentCount + this.ySegmentCount - 1;
+          const interval = (duration - pixelDuration) / diagonalCount;
+
+          for (let d = 0; d < diagonalCount; d++) {
+            const startX = Math.min(d, this.xSegmentCount - 1);
+            const startY = Math.max(0, d - this.ySegmentCount + 1);
+            const steps = Math.min(startX + 1, this.ySegmentCount - startY);
+            for (let i = 0; i < steps; i++) {
+              setTimeout(() => {
+                new Animation(
+                  this.#rotateZ(
+                    this.objects[startX - i][startY + i],
+                    Math.PI / 2
+                  ),
+                  pixelDuration
+                ).play();
+              }, d * interval);
+            }
+          }
+        }
+
+        #rotateZ = (object, rotation) => {
+          return function (progress) {
+            if (!this.initialRotation || progress === 0) {
+              this.initialRotation = object.rotation.z;
+            }
+            object.rotation.z = this.initialRotation + rotation * progress;
+          };
+        };
+
+        #parseText(text, colors) {
+          const symbolSet = new Set(Object.keys(colors));
+          const rows = text.split("\n").filter((row) => row.trim());
+          const offset = rows.reduce((result, row) => {
+            const idx = row.split("").findIndex((s) => symbolSet.has(s));
+            return idx >= 0 ? Math.min(result, idx) : result;
+          }, Infinity);
+          return rows.map((row) =>
+            row.slice(offset).replace(/\s+$/, "").split("")
+          );
+        }
+
+        #createObjects() {
+          const result = [];
+
+          for (let i = 0; i < this.ySegmentCount; i++) {
+            const row = [];
+            for (let j = 0; j < this.xSegmentCount; j++) {
+              const colors = [];
+              for (let k = 0; k < 6; k++) {
+                const config = this.data[k % this.data.length];
+                colors.push(config.colors[config.text[i][j]]);
+              }
+              const pixel = this.#createPixel(
+                this.segmentWidth,
+                this.segmentHeight,
+                colors
+              );
+              pixel.position.set(
+                j * this.segmentWidth,
+                0,
+                i * this.segmentHeight
+              );
+              this.add(pixel);
+              row.push(pixel);
+            }
+            result.push(row);
+          }
+
+          return result;
+        }
+
+        #createPixel(w, h, colors) {
+          colors.forEach((color) => {
+            if (!PixelArt.materials[color]) {
+              PixelArt.materials[color] = new THREE.MeshPhongMaterial({
+                color,
+              });
+            }
+          });
+
+          return new Cube(
+            w,
+            h,
+            w,
+            colors.map((color) => PixelArt.materials[color])
+          );
+        }
+      }
+
+      /*
+       * SETUP
+       */
+      // Canvas
+      const canvas = document.getElementById("webgl");
+      // Scene
+      const scene = new THREE.Scene();
+      // Statistics
+      const stats = new Stats();
+      stats.setMode(0);
+      stats.domElement.style.position = "absolute";
+      stats.domElement.style.left = "0px";
+      stats.domElement.style.top = "0px";
+      document.getElementById("stats").appendChild(stats.domElement);
+      // Helpers
+      const axesHelper = new THREE.AxesHelper(25);
+      scene.add(axesHelper);
+
+      /*
+       * SIZES
+       */
+      const SIZES = {
+        window: {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        },
+      };
+
+      // /*
+      //  * MATERIALS
+      //  */
+      const MATERIALS = {
+        phong: {
+          white: new THREE.MeshPhongMaterial({
+            color: 0xffffff,
+            side: THREE.DoubleSide,
+          }),
+        },
+      };
+
+      /*
+       * OBJECTS
+       */
+      // Plane
+      const plane = new THREE.Mesh(
+        new THREE.PlaneGeometry(100, 100),
+        MATERIALS.phong.white
+      );
+      plane.rotation.x = -0.5 * Math.PI;
+      plane.receiveShadow = true;
+      scene.add(plane);
+
+      // Pixel art build with cubes
+      const pixelArt = new PixelArt(
+        [CONFIGS.dragon, CONFIGS.cat, CONFIGS.dog, CONFIGS.parrot],
+        50,
+        50
+      );
+      scene.add(pixelArt);
+
+      /*
+       * LIGHTS
+       */
+      // Ambient light
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.1);
+      scene.add(ambientLight);
+
+      // Spotlight
+      const spotlight1 = new Spotlight(0xffffff, 0.125);
+      spotlight1.setPosition(0, 45, 0);
+      scene.add(spotlight1);
+
+      /*
+       * CAMERA
+       */
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        SIZES.window.width / SIZES.window.height,
+        0.1,
+        1000
+      );
+      camera.lookAt(new THREE.Vector3(0, 0, 0));
+      scene.add(camera);
+
+      // Controls
+      const controls = new THREE.OrbitControls(camera, canvas);
+      controls.enableDamping = true;
+
+      /*
+       * RENDERER
+       */
+      const renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: true,
+      });
+      renderer.setClearColor(new THREE.Color(0x000000));
+      renderer.shadowMap.enabled = true;
+
+      /*
+       * ANIMATIONS
+       */
+      const calcProgressVector = (from, to, progress) =>
+        new THREE.Vector3(
+          from.x + (to.x - from.x) * progress,
+          from.y + (to.y - from.y) * progress,
+          from.z + (to.z - from.z) * progress
+        );
+
+      const moveCamera = (from, to) => (progress) => {
+        const { x, y, z } = calcProgressVector(from, to, progress);
+        camera.position.set(x, y, z);
+        camera.lookAt(new THREE.Vector3(0, 0, 0));
+      };
+
+      const moveSpotlightTarget = (spotlight, from, to) => (progress) => {
+        spotlight.lookAt(calcProgressVector(from, to, progress));
+      };
+
+      const changeSpotlightAngle = (spotlight, from, to) => (progress) => {
+        spotlight.angle = from + (to - from) * progress;
+      };
+
+      const spotlightAnimation1 = (spotlight) => (progress) => {
+        moveSpotlightTarget(
+          spotlight,
+          new THREE.Vector3(-25, 0, -25),
+          new THREE.Vector3(0, 0, 0)
+        )(progress);
+        changeSpotlightAngle(spotlight, 0.1, 0.3)(progress);
+      };
+
+      new Animation(
+        moveCamera(new THREE.Vector3(0, 40, 20), new THREE.Vector3(0, 40, 5)),
+        3
+      ).play();
+
+      new Animation(spotlightAnimation1(spotlight1), 3).play();
+
+      /*
+       * EVENTS
+       */
+      // Event handlers
+      const handleResize = () => {
+        // Update window sizes
+        const width = (SIZES.window.width = window.innerWidth);
+        const height = (SIZES.window.height = window.innerHeight);
+
+        // Update camera
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+
+        // Update renderer
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      };
+
+      // Event listeners
+      window.addEventListener("resize", handleResize);
+
+      const update = () => {
+        // Update stats
+        stats.update();
+        // Update animations
+        Animation.update();
+        // Render the next frame
+        renderer.render(scene, camera);
+        // Request the new animation frame
+        requestAnimationFrame(update);
+      };
+
+      /*
+       * MAIN
+       */
+      handleResize();
+      update();
+
+      pixelArt.showNextImage(5, 1);
+      setInterval(() => {
+        pixelArt.showNextImage(5, 1);
+      }, 10000);
+    </script>
+  </body>
+</html>
