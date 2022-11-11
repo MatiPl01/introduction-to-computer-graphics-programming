@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>[Homework] Lab 03</title>
+    <script type="text/javascript" src="three.js"></script>
+    <script type="text/javascript" src="stats.js"></script>
+    <script type="text/javascript" src="dat.gui.js"></script>
+    <script type="text/javascript" src="OrbitControls.js"></script>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="webgl"></canvas>
+    <div id="stats"></div>
+
+    <script>
+      /*
+       * CONSTANTS
+       */
+      const TEXTURES_DIR = "textures";
+      const ISLAND = {
+        layers: [
+          `
+          _______
+          _______
+          _______
+          ___d___
+          _______
+          _______
+          _______
+          `,
+          `
+          _______
+          _______
+          ___d___
+          __d_d__
+          ___dd__
+          _______
+          _______
+          `,
+          `
+          _______
+          ___dd__
+          __d_dd_
+          _d___dd
+          __d__d_
+          ___dd__
+          _______
+          `,
+          `
+          __ss___
+          _sd_s__
+          _s___s_
+          s_____s
+          sd____s
+          _sd__s_
+          __sss__
+          `,
+          `
+          _______
+          __gg___
+          __ggg__
+          _ggggg_
+          _ggggg_
+          __ggg__
+          _______
+          `,
+          `
+          _______
+          _______
+          _______
+          ___b___
+          _______
+          _______
+          _______
+          `,
+          `
+          _______
+          _______
+          _______
+          ___b___
+          _______
+          _______
+          _______
+          `,
+          `
+          _______
+          _______
+          _______
+          ___b___
+          _______
+          _______
+          _______
+          `,
+          `
+          _______
+          _______
+          ___ll__
+          __lll__
+          ___l___
+          _______
+          _______
+          `,
+          `
+          _______
+          ___ll__
+          __llll_
+          _lllll_
+          __lll__
+          ___l___
+          _______
+          `,
+          `
+          _______
+          _______
+          ___l___
+          __lll__
+          ___l___
+          _______
+          _______
+          `,
+        ],
+        objects: {
+          d: (size, displayedFaces) => new Dirt(size, displayedFaces),
+          g: (size, displayedFaces) => new Grass(size, displayedFaces),
+          r: (size, displayedFaces) => new Gravel(size, displayedFaces),
+          s: (size, displayedFaces) => new DirtWithGrass(size, displayedFaces),
+          l: (size, displayedFaces) => new Leaves(size, displayedFaces),
+          b: (size, displayedFaces) => new Bark(size / 2, size, displayedFaces),
+        },
+      };
+
+      /*
+       * UTILS
+       */
+      const textureLoader = new THREE.TextureLoader();
+
+      const loadTexture = (dirName, textureName, type, extension) =>
+        textureLoader.load(
+          `${TEXTURES_DIR}/${dirName}/${textureName}_${type}.${extension}`
+        );
+
+      const loadTextures = (name) =>
+        Object.fromEntries(
+          [
+            ["ambientOcclusion", "jpg"],
+            ["baseColor", "jpg"],
+            ["height", "png"],
+            ["normal", "jpg"],
+            ["roughness", "jpg"],
+            ["metallic", "jpg"],
+          ].map(([type, extension]) => [
+            type,
+            loadTexture(name, name, type, extension),
+          ])
+        );
+
+      class Spotlight extends THREE.Group {
+        #target = new THREE.Object3D();
+
+        constructor(color, opacity = 1, angle = 0.1) {
+          super();
+          this.#createSpotlight(color, opacity, angle);
+        }
+
+        get target() {
+          return this.#target;
+        }
+
+        set target(target) {
+          if (this.#target?.type === "Object3D") scene.remove(this.#target);
+          this.#target = target;
+          this.spotlight.target = target;
+        }
+
+        lookAt(vector) {
+          if (this.#target?.type !== "Object3D") {
+            this.target = new THREE.Object3D();
+            scene.add(this.target);
+          }
+          this.#target.position.set(vector.x, vector.y, vector.z);
+        }
+
+        showHelper() {
+          scene.add(new THREE.SpotLightHelper(this.spotlight));
+        }
+
+        showCone(color, opacity, height, segments = 25) {
+          const coneGroup = (this.coneGroup = new THREE.Group());
+          const radius = 0.9 * height * Math.tan(this.spotlight.angle);
+          const cone = (this.cone = new THREE.Mesh(
+            new THREE.ConeGeometry(radius, height, segments, 1, true),
+            new THREE.MeshLambertMaterial({
+              opacity,
+              color,
+              transparent: true,
+            })
+          ));
+          const { x, y, z } = this.spotlight.position;
+          cone.position.set(x, -height / 2, z);
+          coneGroup.position.set(x, y, z);
+          coneGroup.add(cone);
+          this.add(coneGroup);
+        }
+
+        #createSpotlight(color, opacity, angle) {
+          const spotlight = (this.spotlight = new THREE.SpotLight(
+            color,
+            opacity
+          ));
+          spotlight.angle = angle;
+          spotlight.penumbra = 0.7;
+          spotlight.shadow.camera.near = 0.1;
+          spotlight.shadow.camera.far = 100;
+          spotlight.shadow.camera.fov = 60;
+          spotlight.shadow.mapSize.width = 4096;
+          spotlight.shadow.mapSize.height = 4096;
+          spotlight.shadow.radius = 40;
+          spotlight.shadow.blurSamples = 200;
+          spotlight.castShadow = true;
+          spotlight.shadow.camera.left = -100;
+          spotlight.shadow.camera.right = 100;
+          spotlight.shadow.camera.top = 100;
+          spotlight.shadow.camera.bottom = -100;
+
+          this.add(spotlight);
+        }
+      }
+
+      /*
+       * SETUP
+       */
+      // Canvas
+      const canvas = document.getElementById("webgl");
+
+      // Scene
+      const scene = new THREE.Scene();
+
+      // GUI
+      const guiControls = {
+        rotate: false,
+      };
+
+      const gui = new dat.GUI();
+      gui.add(guiControls, "rotate");
+
+      // Statistics
+      const stats = new Stats();
+      stats.setMode(0);
+      stats.domElement.style.position = "absolute";
+      stats.domElement.style.left = "0px";
+      stats.domElement.style.top = "0px";
+      document.getElementById("stats").appendChild(stats.domElement);
+
+      // Helpers
+      const axesHelper = new THREE.AxesHelper(25);
+      scene.add(axesHelper);
+
+      /*
+       * SIZES
+       */
+      const SIZES = {
+        window: {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        },
+      };
+
+      /*
+       * TEXTURES
+       */
+      const TEXTURES = {
+        dirt: loadTextures("dirt"),
+        grass: loadTextures("grass"),
+        dirtSide: loadTextures("dirt_side"),
+        gravel: loadTextures("gravel"),
+        stainedGlass: loadTextures("stained_glass"),
+        leaves: loadTextures("leaves"),
+        bark: loadTextures("bark"),
+        skybox: {
+          top: loadTexture("skybox", "clouds", "top", "jpg"),
+          bottom: loadTexture("skybox", "clouds", "bottom", "jpg"),
+          left: loadTexture("skybox", "clouds", "left", "jpg"),
+          right: loadTexture("skybox", "clouds", "right", "jpg"),
+          front: loadTexture("skybox", "clouds", "front", "jpg"),
+          back: loadTexture("skybox", "clouds", "back", "jpg"),
+        },
+      };
+
+      /*
+       * MATERIALS
+       */
+      const MATERIALS = {
+        phong: {
+          white: new THREE.MeshPhongMaterial({
+            color: 0xffffff,
+            side: THREE.DoubleSide,
+          }),
+        },
+      };
+
+      /*
+       * OBJECTS
+       */
+      class ObjectWithTexture extends THREE.Mesh {
+        constructor(geometry, materials) {
+          super(geometry, materials);
+        }
+
+        static parseTextures(textures, displayedFaces) {
+          let texturesArray = textures;
+          if (!(textures instanceof Array))
+            texturesArray = new Array(6).fill(0).map((_) => textures);
+          return texturesArray.map((texture, idx) =>
+            displayedFaces.includes(idx) ? texture : null
+          );
+        }
+
+        static createMaterial(type, texture, settings) {
+          const maps = {
+            map: texture.baseColor,
+            normalMap: texture.normal,
+            displacementMap: texture.height,
+            displacementScale: 0.15,
+            roughnessMap: texture.roughness,
+            roughness: 0.5,
+            aoMap: texture.ambientOcclusion,
+            ...settings,
+          };
+
+          if (texture.metallnessMap) {
+            maps.metallnessMap = texture.metallnessMap;
+            maps.metalness = 0.5;
+          }
+
+          switch (type) {
+            case "phong":
+              return new THREE.MeshPhongMaterial(maps);
+            case "physical":
+              return new THREE.MeshPhysicalMaterial(maps);
+            case "standard":
+            default:
+              return new THREE.MeshStandardMaterial(maps);
+          }
+        }
+
+        static createMaterials(type, textures, settings) {
+          return textures.map(
+            (texture, idx) =>
+              texture &&
+              ObjectWithTexture.createMaterial(
+                type,
+                texture,
+                settings.all || settings[idx]
+              )
+          );
+        }
+      }
+
+      class Block extends ObjectWithTexture {
+        constructor(
+          size,
+          textures,
+          displayedFaces = [0, 1, 2, 3, 4, 5],
+          segments = 64,
+          materialType = "standard",
+          materialSettings = {}
+        ) {
+          const geometry = Block.#createGeometry(size, segments);
+          const materials = ObjectWithTexture.createMaterials(
+            materialType,
+            ObjectWithTexture.parseTextures(textures, displayedFaces),
+            materialSettings
+          );
+          super(geometry, materials);
+        }
+
+        static #createGeometry(size, segments) {
+          const geometry = new THREE.BoxBufferGeometry(
+            size,
+            size,
+            size,
+            segments,
+            segments,
+            segments
+          );
+          const uvs = geometry.attributes.uv.array;
+          geometry.setAttribute("uv2", new THREE.BufferAttribute(uvs, 2));
+          return geometry;
+        }
+      }
+
+      // class Cylinder extends ObjectWithTexture {
+      //   constructor(
+      //     radius,
+      //     height,
+      //     texture,
+      //     radialSegments = 32,
+      //     heightSegments = 1,
+      //     openEnded = false,
+      //     materialType = "standard",
+      //     materialSettings = {}
+      //   ) {
+      //     const geometry = new THREE.CylinderBufferGeometry(
+      //       radius,
+      //       radius,
+      //       height,
+      //       radialSegments,
+      //       heightSegments,
+      //       openEnded
+      //     );
+      //     const uvs = geometry.attributes.uv.array;
+      //     geometry.setAttribute("uv2", new THREE.BufferAttribute(uvs, 2));
+      //     const material = ObjectWithTexture.createMaterial(
+      //       materialType,
+      //       texture,
+      //       materialSettings
+      //     );
+      //     super(geometry, material);
+      //   }
+      }
+
+      class Dirt extends Block {
+        constructor(size, displayedFaces) {
+          super(size, TEXTURES.dirt, displayedFaces);
+        }
+      }
+
+      class Grass extends Block {
+        constructor(size, displayedFaces) {
+          super(size, TEXTURES.grass, displayedFaces, 64, "standard", {
+            displacementScale: 0.2,
+          });
+        }
+      }
+
+      class DirtWithGrass extends Block {
+        constructor(size, displayedFaces) {
+          super(
+            size,
+            [
+              TEXTURES.dirtSide,
+              TEXTURES.dirtSide,
+              TEXTURES.grass,
+              TEXTURES.dirt,
+              TEXTURES.dirtSide,
+              TEXTURES.dirtSide,
+            ],
+            displayedFaces,
+            128,
+            "standard",
+            {
+              2: {
+                displacementScale: 0.25,
+              },
+            }
+          );
+        }
+      }
+
+      class Gravel extends Block {
+        constructor(size, displayedFaces) {
+          super(size, TEXTURES.gravel, displayedFaces);
+        }
+      }
+
+      class Leaves extends Block {
+        constructor(size, displayedFaces) {
+          super(size, TEXTURES.leaves, displayedFaces, 128, "standard", {
+            all: { displacementScale: 0.15 },
+          });
+        }
+      }
+
+      class Bark extends Block {
+        constructor(radius, height, openEnded) {
+          super(height, TEXTURES.bark);
+        }
+      }
+
+      class Glass extends ObjectWithTexture {
+        constructor(size, texture, settings) {
+          const geometry = new THREE.PlaneBufferGeometry(size, size);
+          const uvs = geometry.attributes.uv.array;
+          geometry.setAttribute("uv2", new THREE.BufferAttribute(uvs, 2));
+          const material = new THREE.MeshPhysicalMaterial({
+            // TODO
+            roughness: 0,
+            metalness: 0,
+            color: 0xffea00,
+            transmission: 1,
+          });
+          // ObjectWithTexture.createMaterial(
+          //   "physical",
+          //   texture,
+          //   {
+          //     ...settings,
+          //     side: THREE.DoubleSide,
+          //     metalness: 0,
+          //     transmission: 1,
+          //   }
+          // );
+          super(geometry, material);
+        }
+      }
+
+      class StainedGlass extends Glass {
+        constructor(size) {
+          super(size, TEXTURES.stainedGlass);
+        }
+      }
+
+      class Construction extends THREE.Group {
+        constructor(data, blockSize) {
+          super();
+          this.parsedLayers = this.#parseLayers(data.layers);
+          this.ySegments = data.layers.length;
+          this.zSegments = this.parsedLayers[0].length;
+          this.xSegments = this.parsedLayers[0][0].length;
+          const layersGroup = this.#createLayers(data, blockSize);
+          layersGroup.position.y += blockSize / 2;
+          layersGroup.position.x -= ((this.xSegments - 1) * blockSize) / 2;
+          layersGroup.position.z -= ((this.zSegments - 1) * blockSize) / 2;
+          this.add(layersGroup);
+        }
+
+        #parseLayerText(text) {
+          return text
+            .split("\n")
+            .map((row) => row.trim())
+            .filter(Boolean)
+            .map((row) => row.split(""));
+        }
+
+        #parseLayers(layers) {
+          return layers.map(this.#parseLayerText);
+        }
+
+        #createLayers(data, blockSize) {
+          const layersGroup = new THREE.Group();
+          this.parsedLayers.map((layer, y) => {
+            const layerGroup = new THREE.Group();
+            layer.forEach((row, z) => {
+              row.forEach((symbol, x) => {
+                if (this.#isEmptySymbol(symbol)) return;
+                const displayedFaces = this.#getDisplayedFaces(x, y, z);
+                const object = data.objects[symbol](blockSize, displayedFaces);
+                const position = this.#getPosition(x, y, z, blockSize);
+                object.position.set(position.x, position.y, position.z);
+                layerGroup.add(object);
+              });
+              layersGroup.add(layerGroup);
+            });
+          });
+          return layersGroup;
+        }
+
+        #getDisplayedFaces(x, y, z) {
+          const displayedFaces = [];
+
+          if (this.#isEmpty(x, y, z - 1)) displayedFaces.push(5); // back side
+          if (this.#isEmpty(x, y, z + 1)) displayedFaces.push(4); // front side
+          if (this.#isEmpty(x, y - 1, z)) displayedFaces.push(3); // bottom side
+          if (this.#isEmpty(x, y + 1, z)) displayedFaces.push(2); // top side
+          if (this.#isEmpty(x - 1, y, z)) displayedFaces.push(1); // left side
+          if (this.#isEmpty(x + 1, y, z)) displayedFaces.push(0); // right side
+
+          return displayedFaces;
+        }
+
+        #getPosition(x, y, z, blockSize) {
+          return new THREE.Vector3(x * blockSize, y * blockSize, z * blockSize);
+        }
+
+        #isEmpty(x, y, z) {
+          return (
+            x < 0 ||
+            x >= this.xSegments ||
+            y < 0 ||
+            y >= this.ySegments ||
+            z < 0 ||
+            z >= this.zSegments ||
+            this.#isNotFullSideSymbol(this.parsedLayers[y][z][x])
+          );
+        }
+
+        #isEmptySymbol(symbol) {
+          return symbol === "_";
+        }
+
+        #isNotFullSideSymbol(symbol) {
+          return ["_", "b"].includes(symbol);
+        }
+      }
+
+      const island = new Construction(ISLAND, 1);
+      scene.add(island);
+
+      /*
+       * SKYBOX
+       */
+      const skybox = new THREE.Mesh(
+        new THREE.BoxGeometry(10000, 10000, 10000),
+        ["right", "left", "top", "bottom", "front", "back"].map(
+          (side) =>
+            new THREE.MeshBasicMaterial({
+              map: TEXTURES.skybox[side],
+              side: THREE.BackSide,
+            })
+        )
+      );
+      scene.add(skybox);
+
+      /*
+       * LIGHTS
+       */
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+      scene.add(ambientLight);
+
+      const spotLight = new Spotlight(0xffffff, 1, 0.2);
+      spotLight.position.set(10, 20, 10);
+      spotLight.lookAt(new THREE.Vector3(0, 5, 0));
+      scene.add(spotLight);
+
+      const spotLight2 = new Spotlight(0xffffff, 1, 0.2);
+      spotLight2.position.set(10, 30, 10);
+      spotLight2.lookAt(new THREE.Vector3(0, 25, 0));
+      scene.add(spotLight2);
+
+      /*
+       * CAMERA
+       */
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        SIZES.window.width / SIZES.window.height,
+        0.1,
+        10000
+      );
+      camera.position.x = 10;
+      camera.position.y = 10;
+      camera.position.z = 10;
+      camera.lookAt(new THREE.Vector3(0, 5, 0));
+      scene.add(camera);
+
+      // Controls
+      const orbitControls = new THREE.OrbitControls(camera, canvas);
+      orbitControls.enableDamping = true;
+
+      /*
+       * RENDERER
+       */
+      const renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: true,
+      });
+      renderer.setClearColor(new THREE.Color(0xeeeeee));
+
+      /*
+       * EVENTS
+       */
+      // Event handlers
+      const handleResize = () => {
+        // Update window sizes
+        const width = (SIZES.window.width = window.innerWidth);
+        const height = (SIZES.window.height = window.innerHeight);
+
+        // Update camera
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+
+        // Update renderer
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      };
+
+      // Event listeners
+      window.addEventListener("resize", handleResize);
+
+      /*
+       * ANIMATIONS
+       */
+      const update = () => {
+        // Update stats
+        stats.update();
+        // Call animation functions
+        if (guiControls.rotate) {
+          island.rotation.y += 0.005;
+        }
+        // Render the next frame
+        renderer.render(scene, camera);
+        // Request the new animation frame
+        requestAnimationFrame(update);
+      };
+
+      /*
+       * MAIN
+       */
+      handleResize();
+      update();
+    </script>
+  </body>
+</html>

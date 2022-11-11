@@ -1,11 +1,6 @@
-01-ambient-and-spotlight.html
-02-point-light.html
-03-spot-light.html
-04-directional-light.html
-05-hemisphere-light.html
+/examples
+three.js
 dat.gui.js
-grasslight-big.jpg
 jquery-1.9.0.js
 OrbitControls.js
 stats.js
-three.js
