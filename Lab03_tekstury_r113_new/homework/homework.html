@@ -22,192 +22,107 @@
     <div id="stats"></div>
 
     <script>
+      // TODO - fix stairs side
+      // TODO - add shadows
+      // TODO - fix camera rotation
+      // TODO - improve fence textures
+      // TODO - add flowers and grass
+      // TODO - add details in church (torches, candles, etc)
+      // TODO - add light sources inside the church
+
       /*
        * CONSTANTS
        */
       const TEXTURES_DIR = "textures";
-      const ISLAND = {
-        layers: [
-          `
-          _______
-          _______
-          _______
-          ___d___
-          _______
-          _______
-          _______
-          `,
-          `
-          _______
-          _______
-          ___d___
-          __d_d__
-          ___dd__
-          _______
-          _______
-          `,
-          `
-          _______
-          ___dd__
-          __d_dd_
-          _d___dd
-          __d__d_
-          ___dd__
-          _______
-          `,
-          `
-          __ss___
-          _sd_s__
-          _s___s_
-          s_____s
-          sd____s
-          _sd__s_
-          __sss__
-          `,
-          `
-          _______
-          __gg___
-          __ggg__
-          _ggggg_
-          _ggggg_
-          __ggg__
-          _______
-          `,
-          `
-          _______
-          _______
-          _______
-          ___b___
-          _______
-          _______
-          _______
-          `,
-          `
-          _______
-          _______
-          _______
-          ___b___
-          _______
-          _______
-          _______
-          `,
-          `
-          _______
-          _______
-          _______
-          ___b___
-          _______
-          _______
-          _______
-          `,
-          `
-          _______
-          _______
-          ___ll__
-          __lll__
-          ___l___
-          _______
-          _______
-          `,
-          `
-          _______
-          ___ll__
-          __llll_
-          _lllll_
-          __lll__
-          ___l___
-          _______
-          `,
-          `
-          _______
-          _______
-          ___l___
-          __lll__
-          ___l___
-          _______
-          _______
-          `,
-        ],
-        objects: {
-          d: (size, displayedFaces) => new Dirt(size, displayedFaces),
-          g: (size, displayedFaces) => new Grass(size, displayedFaces),
-          r: (size, displayedFaces) => new Gravel(size, displayedFaces),
-          s: (size, displayedFaces) => new DirtWithGrass(size, displayedFaces),
-          l: (size, displayedFaces) => new Leaves(size, displayedFaces),
-          b: (size, displayedFaces) => new Bark(size / 2, size, displayedFaces),
-        },
+      const MOVEMENT_SPEED = 0.1;
+
+      const CONTROLS = {
+        w: "forward",
+        ArrowUp: "forward",
+        s: "backward",
+        ArrowDown: "backward",
+        d: "right",
+        ArrowRight: "right",
+        a: "left",
+        ArrowLeft: "left",
+        " ": "up",
+        Control: "down",
       };
+
+      const ACTIVE_CONTROLS = Object.fromEntries(
+        Object.values(CONTROLS).map((key) => [key, false])
+      );
 
       const CHURCH = {
         layers: [
           `
           r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r
           r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r
-          r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r
-          r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r
-          r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r
-          r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r
-          r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r
-          r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r
-          r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r
-          r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r
-          r,r,r,r,r,r,r,r,r,r,r,r,w,w,r,r
-          r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r
-          r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r
-          r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r
-          r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r
-          r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r
+          r,r,r,r,t,t,t,r,r,r,r,r,r,r,r,r
+          r,r,t,t,t,t,t,t,t,t,t,r,t,t,r,r
+          r,r,t,t,t,t,t,t,t,t,t,t,t,t,t,r
+          r,r,t,t,t,t,t,or,t,or,t,or,t,t,t,r
+          r,r,t,t,t,or,or,or,or,or,or,or,or,or,t,r
+          r,r,t,t,t,t,t,or,t,or,t,or,t,t,t,r
+          r,r,t,t,t,t,t,t,t,t,t,t,t,t,t,r
+          r,r,r,t,t,t,t,t,t,t,t,t,t,t,t,r
+          r,r,r,r,t,t,t,r,r,r,r,r,w,w,r,r
+          r,r,r,r,r,r,r,r,r,r,r,r,g,r,r,r
+          r,r,r,r,r,r,r,r,r,r,r,r,g,g,r,r
+          d,r,d,r,r,r,r,r,g,r,g,d,g,r,d,r
+          d,r,d,r,r,r,d,g,g,d,g,r,g,d,r,r
+          r,r,r,r,r,g,g,r,d,g,r,r,r,r,r,r
           `,
           `
-          _,_,_,w,ws2,_,ws2,w,_,_,_,_,_,_,_,_
-          _,_,_,w,w,ws2,w,w,_,w,_,_,_,w,_,_
-          cs3,w,w,w,_,_,_,w,w,w,w,w,w,w,w,_
-          _,w,_,_,_,_,_,_,_,_,_,w,_,_,w,w
-          _,w,_,_,_,_,_,_,_,_,_,_,_,_,_,w
-          _,w,_,_,_,_,_,_,_,_,_,_,_,_,_,w
-          cs3,w,_,_,_,_,_,_,_,_,_,_,_,_,_,ws1
-          _,w,_,_,_,_,_,_,_,_,_,_,_,_,_,w
-          _,w,_,_,_,_,_,_,_,_,_,_,_,_,_,w
-          _,w,w,_,_,_,_,_,_,_,_,_,_,_,_,w
-          cs3,w,w,w,_,_,_,c,w,w,w,w,_,_,w,_
-          _,_,_,w,w,w,w,w,_,w,_,_,_,_,_,_
-          _,_,_,w,ws0,_,ws0,w,_,_,_,_,_,_,_,_
-          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
-          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
-          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,l,w,ws2,_,ws2,w,l,_,_,_,_,_,_,_
+          _,l,l,w,w,ws2,w,w,l,w,l,bs2,bs2,w,_,_
+          cs3,w,w,w,ah1,ah1,ah1,w,w,w,w,w,w,w,w,_
+          _,w,ah1,ah1,ah1,ah1,ah1,_,_,_,_,w,_,_,w,w
+          l,w,ah1,b,b,or,_,_,as3,_,as3,_,as3,_,as3,w
+          l,w,ah1,b,b,or,_,_,as3,_,as3,_,as3,_,as3,w
+          cs3,w,ah1,b,b,or,_,_,_,_,_,_,_,_,_,ws1
+          _,w,ah1,b,b,or,_,_,as3,_,as3,_,_,_,as3,w
+          l,w,ah1,b,b,or,_,_,as3,_,as3,_,_,_,as3,w
+          l,w,w,ah1,a,a,ah1,_,_,_,_,w,_,_,w,w
+          cs3,w,w,w,ah1,ah1,ah1,c,w,w,w,w,d0,d0,w,_
+          _,l,l,w,w,w,w,w,l,w,l,bs1,_,_,bs3,_
+          cs0,_,cs0,w,ws0,_,ws0,w,l,_,l,w,_,_,w,_
+          _,_,_,l,l,_,l,_,_,_,_,_,_,_,_,l
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,l
+          l,_,_,_,_,_,_,_,_,_,l,l,l,_,l,l
           `,
           `
           _,_,_,w,_,_,_,w,_,_,_,_,_,_,_,_
-          _,_,_,ws3,w,sg0,w,ws1,_,w,_,_,_,w,_,_
-          _,w,ws2,w,_,_,_,w,w,w,w,w,w,w,w,_
+          _,_,l,ws3,w,sg0,w,ws1,l,w,l,_,_,w,_,_
+          _,w,ws2,w,_,_,_,w,c,w,c,w,w,w,w,_
           _,cs3,w,_,_,_,_,_,_,_,_,w,_,_,w,w
           _,w,_,_,_,_,_,_,_,_,_,_,_,_,_,ws1
-          _,cs3,_,_,_,_,_,_,_,_,_,_,_,_,_,w
-          _,w,_,_,_,_,_,_,_,_,_,_,_,_,_,sg1
-          _,cs3,_,_,_,_,_,_,_,_,_,_,_,_,_,w
-          _,w,_,_,_,_,_,_,_,_,_,_,_,_,_,ws1
-          _,cs3,w,_,_,_,_,_,_,_,_,_,_,_,_,w
+          _,cs3,_,_,ow,_,_,_,_,_,_,_,_,_,_,w
+          _,w,_,_,ow,_,_,_,_,_,_,_,_,_,_,fg1
+          _,cs3,_,_,ow,_,_,_,_,_,_,_,_,_,_,w
+          l,w,_,_,_,_,_,_,_,_,_,_,_,_,_,ws1
+          _,cs3,w,_,as0,as0,_,_,_,_,_,w,_,_,w,w
           _,w,ws0,w,_,_,_,w,w,w,w,w,_,_,w,_
-          _,_,_,_,w,sg0,w,_,_,w,_,_,_,_,_,_
-          _,_,_,w,_,_,_,w,_,_,_,_,_,_,_,_
+          _,_,l,_,w,sg0,w,_,l,w,l,bf13,_,_,bf13,_
+          _,_,_,w,_,_,l,w,_,_,_,w,_,_,w,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
-          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,l,_,_,_,l
           `,
           `
           _,_,_,w,_,_,_,w,_,_,_,_,_,_,_,_
           _,_,_,_,w,sg0,w,_,_,w,_,_,_,w,_,_
-          _,w,_,w,_,_,_,w,w,w,w,w,w,w,w,_
-          _,sg1,w,_,_,_,_,_,_,_,_,ws3,ws5,ws7,ws1,w
-          _,w,_,_,_,_,_,_,_,_,_,_,_,_,_,sg1
-          _,sg1,_,_,_,_,_,_,_,_,_,_,_,_,_,w
-          _,w,_,_,_,_,_,_,_,_,_,_,_,_,_,sg1
-          _,sg1,_,_,_,_,_,_,_,_,_,_,_,_,_,w
-          _,w,_,_,_,_,_,_,_,_,_,_,_,_,_,sg1
-          _,sg1,w,_,_,_,_,_,_,_,_,_,ws7,ws5,_,w
+          _,w,_,w,_,_,_,w,w,c,w,w,w,w,w,_
+          _,w,w,_,_,_,_,_,_,_,_,ws3,ws5,ws7,ws1,w
+          _,sg1,_,_,_,_,_,_,_,_,_,_,_,_,_,fg1
+          _,w,_,_,_,_,_,_,_,_,_,_,_,_,_,w
+          _,sg1,_,_,_,_,_,_,_,_,_,_,_,_,_,fg1
+          _,w,_,_,_,_,_,_,_,_,_,_,_,_,_,w
+          _,sg1,_,_,_,_,_,_,_,_,_,_,_,_,_,fg1
+          _,w,w,_,_,_,_,_,_,_,_,ws3,ws5,ws7,ws1,w
           _,w,_,w,_,_,_,w,c,w,c,w,cs4,cs4,w,_
           _,_,_,_,w,sg0,w,_,_,w,_,_,_,_,_,_
-          _,_,_,w,_,_,_,w,_,_,_,_,_,_,_,_
+          _,_,_,w,_,_,_,w,_,_,_,w,_,_,w,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
@@ -215,43 +130,43 @@
           `
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,w,sg0,w,_,_,ws2,_,_,_,ws2,_,_
-          _,w,_,w,_,_,_,w,w,w,w,w,w,w,w,_
+          _,w,_,w,_,_,_,w,w,c,c,w,w,w,c,_
           _,w,w,_,_,_,_,_,_,_,_,_,ws3,ws1,_,w
-          _,w,_,_,_,_,_,_,_,_,_,_,_,_,_,sg1
-          _,cs7,_,_,_,_,_,_,_,_,_,_,_,_,_,w
-          _,w,_,_,_,_,_,_,_,_,_,_,_,_,_,sg1
-          _,cs7,_,_,_,_,_,_,_,_,_,_,_,_,_,w
-          _,w,_,_,_,_,_,_,_,_,_,_,_,_,_,sg1
+          _,w,_,_,_,_,_,_,_,_,_,_,_,_,_,fg1
+          _,cs7,bs1,_,_,_,_,_,_,_,_,_,_,_,_,w
+          _,w,bs1,_,_,_,_,_,_,_,_,_,_,_,_,fg1
+          _,cs7,bs1,_,_,_,_,_,_,_,_,_,_,_,_,w
+          _,w,_,_,_,_,_,_,_,_,_,_,_,_,_,fg1
           _,w,w,_,_,_,_,_,_,_,_,_,ws3,ws1,_,w
           _,w,_,w,_,_,_,w,w,w,w,c,c,c,w,_
-          _,_,_,_,w,sg0,w,_,_,ws0,_,_,_,_,_,_
-          _,_,_,w,_,_,_,w,_,_,_,_,_,_,_,_
-          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,w,sg0,w,_,_,ws0,_,bs3,cs5,cs7,bs1,_
+          _,_,_,w,_,_,_,w,_,_,_,bs3,cs5,cs7,bs1,_
+          _,_,_,_,_,_,_,_,_,_,_,bs3,bs5,bs7,bs1,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           `,
           `
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,ws7,w,sg0,w,ws5,_,_,_,_,_,_,_,_
-          _,w,_,w,_,_,_,w,w,w,w,w,w,w,w,_
+          _,w,_,w,_,_,_,w,c,w,w,w,w,w,w,_
           _,w,w,_,_,_,_,_,_,_,_,_,_,w,_,w
           _,_,w,_,_,_,_,_,_,_,_,_,_,_,_,ws5
           _,_,sg1,_,_,_,_,_,_,_,_,_,_,_,_,w
-          _,_,sg1,_,_,_,_,_,_,_,_,_,_,_,_,sg1
+          _,_,sg1,_,_,_,_,_,_,_,_,_,_,_,_,fg1
           _,_,sg1,_,_,_,_,_,_,_,_,_,_,_,_,w
           _,_,w,_,_,_,_,_,_,_,_,_,_,_,_,ws5
           _,w,w,_,_,_,_,_,_,_,_,_,_,w,_,w
           _,w,_,w,_,_,_,w,w,w,c,w,w,w,w,_
-          _,_,_,ws7,w,sg0,w,ws5,_,_,_,_,_,_,_,_
-          _,_,_,bs0,bs0,bh0,bs0,bs0,_,_,_,_,_,_,_,_
-          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,ws7,w,sg0,w,ws5,_,_,_,_,bs3,bs1,_,_
+          _,_,_,bs0,bs0,bh0,bs0,bs0,_,_,_,_,bs3,bs1,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,bs3,bs1,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           `,
           `
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
-          _,_,_,w,_,_,_,w,_,_,_,_,_,_,_,_
-          _,ws3,_,w,w,w,w,w,w,sg0,w,sg0,w,sg0,w,_
+          _,_,_,w,ws2,ws2,ws2,w,_,_,_,_,_,_,_,_
+          _,ws3,_,w,w,w,w,w,w,fg0,w,fg0,w,fg0,w,_
           _,_,w,_,_,_,_,_,_,_,_,_,_,w,w,_
           _,_,sg1,_,_,_,_,_,_,_,_,_,_,_,w,_
           _,_,sg1,_,_,_,_,_,_,_,_,_,_,_,w,ws2
@@ -259,7 +174,7 @@
           _,_,sg1,_,_,_,_,_,_,_,_,_,_,_,w,ws0
           _,_,sg1,_,_,_,_,_,_,_,_,_,_,_,w,_
           _,_,w,_,_,_,_,_,_,_,_,_,_,w,w,_
-          _,ws3,_,w,_,_,_,_,w,sg0,w,sg0,w,sg0,w,_
+          _,ws3,_,w,w,w,w,w,w,fg0,w,fg0,w,fg0,w,_
           _,_,_,w,bs0,bs0,bs0,w,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
@@ -269,7 +184,7 @@
           `
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,w,_,_,_,w,_,_,_,_,_,_,_,_
-          _,ws3,_,w,w,_,w,w,w,sg0,w,sg0,w,sg0,w,_
+          _,ws3,_,w,w,fg0,w,w,w,fg0,w,fg0,w,fg0,w,_
           _,_,w,_,_,_,_,_,_,_,_,_,_,w,w,_
           _,_,sg1,_,_,_,_,_,_,_,_,_,_,_,w,_
           _,_,sg1,_,_,_,_,_,_,_,_,_,_,_,w,_
@@ -277,7 +192,7 @@
           _,_,sg1,_,_,_,_,_,_,_,_,_,_,_,w,_
           _,_,sg1,_,_,_,_,_,_,_,_,_,_,_,w,_
           _,_,w,_,_,_,_,_,_,_,_,_,_,w,w,_
-          _,ws3,_,w,_,_,_,_,w,sg0,w,sg0,w,sg0,w,_
+          _,ws3,_,w,w,fg0,w,w,w,fg0,w,fg0,w,fg0,w,_
           _,_,_,w,_,_,_,w,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
@@ -286,52 +201,34 @@
           `,
           `
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
-          _,_,_,bs2,bs2,_,bs2,bs2,bs2,bs2,bs2,bs2,bs2,_,_,_
-          _,w,ws6,w,w,_,w,w,w,ws6,w,ws6,w,ws6,w,_
-          _,_,w,_,_,_,_,_,_,_,_,_,_,w,ws1,_
-          _,_,sg1,_,_,_,_,_,_,_,_,_,_,_,w,_
-          _,_,sg1,_,_,_,_,_,_,_,_,_,_,_,w,_
-          _,_,sg1,_,_,_,_,_,_,_,_,_,_,_,w,w
-          _,_,sg1,_,_,_,_,_,_,_,_,_,_,_,w,_
-          _,_,sg1,_,_,_,_,_,_,_,_,_,_,_,w,_
-          _,_,w,_,_,_,_,_,_,_,_,_,_,w,ws1,_
-          _,w,ws4,w,w,_,w,w,w,w,w,w,w,ws4,w,_
-          _,_,_,bs0,bs0,_,bs0,bs0,bs0,bs0,bs0,bs0,bs0,_,_,_
+          bs2,bs2,_,bs2,bs2,_,bs2,bs2,bs2,bs2,bs2,bs2,bs2,_,bs2,bs2
+          w,ws6,w,w,_,w,w,w,ws6,w,ws6,w,ws6,w,w,bs4
+          _,_,w,_,_,_,_,_,_,_,db0,_,_,w,ws1,_
+          _,_,sg1,_,_,_,_,_,_,_,db0,_,_,_,w,_
+          _,_,sg1,_,_,_,_,_,_,_,db0,_,_,_,w,_
+          _,_,sg1,_,_,_,_,_,_,_,w,_,_,_,w,w
+          _,_,sg1,_,_,_,_,_,_,_,db0,_,_,_,w,_
+          _,_,sg1,_,_,_,_,_,_,_,db0,_,_,_,w,_
+          _,_,w,_,_,_,_,_,_,_,db0,_,_,w,ws1,_
+          _,w,ws4,w,w,fg0,w,w,w,w,w,w,w,ws4,w,bs6
+          bs0,bs0,_,bs0,bs0,_,bs0,bs0,bs0,bs0,bs0,bs0,bs0,_,bs0,bs0
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
-          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
-          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
-          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
-          `,
-          `
-          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
-          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
-          _,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,_
-          _,w,_,_,_,_,_,_,_,_,_,_,_,_,w,_
-          _,_,w,_,_,_,_,_,_,_,_,_,_,_,ws1,_
-          _,_,sg1,_,_,_,_,_,_,_,_,_,_,_,w,_
-          _,_,sg1,_,_,_,_,_,_,_,_,_,_,_,sg1,_
-          _,_,sg1,_,_,_,_,_,_,_,_,_,_,_,w,_
-          _,_,w,_,_,_,_,_,_,_,_,_,_,_,ws1,_
-          _,w,_,_,_,_,_,_,_,_,_,_,_,_,w,_
-          _,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,_
-          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
-          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
-          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_  
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           `,
           `
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
-          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
-          _,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,_
-          _,w,_,_,_,_,_,_,_,_,_,_,_,_,_,_
-          _,_,bs5,_,_,_,_,_,_,_,_,_,_,_,bs7,_
-          _,_,bs5,_,_,_,_,_,_,_,_,_,_,_,bs7,_
-          _,_,bs5,_,_,_,_,_,_,_,_,_,_,_,bs7,_
-          _,w,_,_,_,_,_,_,_,_,_,_,_,_,_,_
-          _,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,_
-          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2
+          bs4,w,bs4,bs4,bs4,bs4,bs4,bs4,bs4,bs4,bs4,bs4,bs4,bs4,w,bs4
+          _,_,w,_,_,_,db0,_,_,_,_,_,_,_,ws1,_
+          _,_,sg1,_,_,_,db0,_,_,_,_,_,_,_,w,_
+          _,_,sg1,_,_,_,w,_,_,_,db,_,_,_,sg1,_
+          _,_,sg1,_,_,_,db0,_,_,_,_,_,_,_,w,_
+          _,_,w,_,_,_,db0,_,_,_,_,_,_,_,ws1,_
+          bs6,w,bs6,bs6,bs6,bs6,bs6,bs6,bs6,bs6,bs6,bs6,bs6,bs6,w,bs6
+          bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
@@ -342,13 +239,13 @@
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
-          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
-          _,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,_
-          _,w,_,_,_,_,_,_,_,_,_,_,_,_,ws1,_
-          _,ws7,_,_,_,_,_,_,_,_,_,_,_,_,w,_
-          _,w,_,_,_,_,_,_,_,_,_,_,_,_,ws1,_
-          _,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,_
-          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2
+          bs4,w,bs4,bs4,bs4,bs4,bs4,bs4,bs4,bs4,bs4,bs4,bs4,b,bs4
+          _,_,bs5,_,_,_,dbs2,_,_,_,_,_,_,_,bs7,_
+          _,_,bs5,_,_,_,db,_,_,_,db,_,_,_,bs7,_
+          _,_,bs5,_,_,_,dbs0,_,_,_,_,_,_,_,bs7,_
+          bs6,w,bs6,bs6,bs6,bs6,bs6,bs6,bs6,bs6,bs6,bs6,bs6,b,bs6
+          bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
@@ -361,11 +258,11 @@
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
-          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
-          _,bs2,w,cs2,w,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,_
-          _,w,w,w,w,w,w,w,w,w,w,w,w,w,w,_
-          _,bs0,w,cs0,w,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,_
-          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2
+          bs4,w,bs4,bs4,bs4,bs4,bs4,bs4,bs4,bs4,bs4,bs4,bs4,bs4,ws1,bs4
+          _,ws7,_,_,_,_,db,_,_,_,db,_,_,_,w,_
+          bs6,w,bs6,bs6,bs6,bs6,bs6,bs6,bs6,bs6,bs6,bs6,bs6,bs6,ws1,bs6
+          bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
@@ -380,9 +277,9 @@
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
-          _,_,w,_,w,_,_,_,_,_,_,_,_,_,_,_
-          _,_,_,_,_,bh1,bh1,bh1,bh1,bh1,bh1,bh1,bh1,bh1,b,_
-          _,_,w,_,w,_,_,_,_,_,_,_,_,_,_,_
+          bs2,bs2,w,cs2,w,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2,bs2
+          bh0,w,w,w,w,w,w,w,w,w,w,w,w,w,w,bh0
+          bs0,bs0,w,cs0,w,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
@@ -399,7 +296,7 @@
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,w,_,w,_,_,_,_,_,_,_,_,_,_,_
-          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          b,bh1,_,bf,_,bh1,bh1,bh1,bh1,bh1,bh1,bh1,bh1,bh1,bh1,b
           _,_,w,_,w,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
@@ -417,8 +314,99 @@
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,w,_,w,_,_,_,_,_,_,_,_,_,_,_
-          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,bf,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,w,_,w,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          `,
+          `
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,w,bf02,w,_,_,_,_,_,_,_,_,_,_,_
+          _,_,bf13,bf0123,bf13,_,_,_,_,_,_,_,_,_,_,_
+          _,_,w,bf02,w,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          `,
+          `
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,cs2,_,cs2,_,_,_,_,_,_,_,_,_,_,_
+          _,cs3,w,ws2,w,cs1,_,_,_,_,_,_,_,_,_,_
+          _,_,ws3,_,ws1,_,_,_,_,_,_,_,_,_,_,_
+          _,cs3,w,ws0,w,cs1,_,_,_,_,_,_,_,_,_,_
+          _,_,cs0,_,cs0,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          `,
+          `
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,cs2,ws6,cs2,_,_,_,_,_,_,_,_,_,_,_
+          _,_,ws7,_,ws5,_,_,_,_,_,_,_,_,_,_,_
+          _,_,cs0,ws4,cs0,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          `,
+          `
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,cs2,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,cs3,c,cs1,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,cs0,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          `,
+
+          `
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,cf,_,_,_,_,_,_,_,_,_,_,_,_
+          _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
@@ -431,54 +419,76 @@
         ],
         objects: {
           r: (size, displayedFaces) => new DirtWithGrass(size, displayedFaces),
+          d: (size, displayedFaces) => new Dirt(size, displayedFaces),
           w: (size, displayedFaces) => new WallStone(size, displayedFaces),
           c: (size, displayedFaces) => new CobbleStone(size, displayedFaces),
-          b: (size, displayedFaces) => new Wood(size, displayedFaces),
-          cs0: (size) => createStairs(CobbleStoneStairs, size, 0),
-          cs2: (size) => createStairs(CobbleStoneStairs, size, 2),
-          cs3: (size) => createStairs(CobbleStoneStairs, size, 3),
-          cs4: (size) => createStairs(CobbleStoneStairs, size, 0, 1),
-          cs7: (size) => createStairs(CobbleStoneStairs, size, 3, 1),
-          ws0: (size) => createStairs(WallStoneStairs, size, 0),
-          ws1: (size) => createStairs(WallStoneStairs, size, 1),
-          ws2: (size) => createStairs(WallStoneStairs, size, 2),
-          ws3: (size) => createStairs(WallStoneStairs, size, 3),
-          ws4: (size) => createStairs(WallStoneStairs, size, 0, 1),
-          ws5: (size) => createStairs(WallStoneStairs, size, 1, 1),
-          ws6: (size) => createStairs(WallStoneStairs, size, 2, 1),
-          ws7: (size) => createStairs(WallStoneStairs, size, 3, 1),
-          bs0: (size) => createStairs(WoodenStairs, size, 0),
-          bs2: (size) => createStairs(WoodenStairs, size, 2),
-          bs5: (size) => createStairs(WoodenStairs, size, 1, 1),
-          bs7: (size) => createStairs(WoodenStairs, size, 3, 1),
+          b: (size, displayedFaces) => new Bark(size, displayedFaces),
+          db: (size, displayedFaces) => new DarkBark(size, displayedFaces),
+          a: (size, displayedFaces) => new Wood(size, displayedFaces),
+          t: (size, displayedFaces) => new WoodenTiles(size, displayedFaces),
+          g: (size, displayedFaces) => new Gravel(size, displayedFaces),
+          or: (size, displayedFaces) => new Wool(size, displayedFaces, "red"),
+          ow: (size, displayedFaces) => new Wool(size, displayedFaces, "white"),
+          l: (size) => new Leaves(size),
+          db0: (size, displayedFaces) => createObject(DarkBark, size, 0, 1),
+          db1: (size, displayedFaces) => createObject(DarkBark, size, 1, 1),
+          cs0: (size) => createObject(CobbleStoneStairs, size, 0),
+          cs1: (size) => createObject(CobbleStoneStairs, size, 1),
+          cs2: (size) => createObject(CobbleStoneStairs, size, 2),
+          cs3: (size) => createObject(CobbleStoneStairs, size, 3),
+          cs4: (size) => createObject(CobbleStoneStairs, size, 0, 2),
+          cs5: (size) => createObject(CobbleStoneStairs, size, 1, 2),
+          cs7: (size) => createObject(CobbleStoneStairs, size, 3, 2),
+          ws0: (size) => createObject(WallStoneStairs, size, 0),
+          ws1: (size) => createObject(WallStoneStairs, size, 1),
+          ws2: (size) => createObject(WallStoneStairs, size, 2),
+          ws3: (size) => createObject(WallStoneStairs, size, 3),
+          ws4: (size) => createObject(WallStoneStairs, size, 0, 2),
+          ws5: (size) => createObject(WallStoneStairs, size, 1, 2),
+          ws6: (size) => createObject(WallStoneStairs, size, 2, 2),
+          ws7: (size) => createObject(WallStoneStairs, size, 3, 2),
+          bs0: (size) => createObject(BarkStairs, size, 0),
+          bs1: (size) => createObject(BarkStairs, size, 1),
+          bs2: (size) => createObject(BarkStairs, size, 2),
+          bs3: (size) => createObject(BarkStairs, size, 3),
+          bs4: (size) => createObject(BarkStairs, size, 0, 2),
+          bs5: (size) => createObject(BarkStairs, size, 1, 2),
+          bs6: (size) => createObject(BarkStairs, size, 2, 2),
+          bs7: (size) => createObject(BarkStairs, size, 3, 2),
+          as0: (size) => createObject(WoodStairs, size, 0),
+          as3: (size) => createObject(WoodStairs, size, 3),
+          dbs0: (size) => createObject(DarkBarkStairs, size, 0),
+          dbs2: (size) => createObject(DarkBarkStairs, size, 2),
           bh0: (size, displayedFaces) =>
-            new WoodHalf(size, displayedFaces, "top"),
+            new BarkHalf(size, displayedFaces, "top"),
           bh1: (size, displayedFaces) =>
+            new BarkHalf(size, displayedFaces, "bottom"),
+          ah0: (size, displayedFaces) =>
+            new WoodHalf(size, displayedFaces, "top"),
+          ah1: (size, displayedFaces) =>
             new WoodHalf(size, displayedFaces, "bottom"),
-          sg0: (size) => createGlass(StainedGlass, size, 0),
-          sg1: (size) => createGlass(StainedGlass, size, 1),
+          sg0: (size) => createObject(StainedGlass, size, 0),
+          sg1: (size) => createObject(StainedGlass, size, 1),
+          fg0: (size) => createObject(FrostedGlass, size, 0),
+          fg1: (size) => createObject(FrostedGlass, size, 1),
+          d0: (size) => createObject(Door, size, 0),
+          bf: (size) => new BarkFence(size),
+          bf02: (size) => new BarkFence(size, [0, 2]),
+          bf13: (size) => new BarkFence(size, [1, 3]),
+          bf0123: (size) => new BarkFence(size, [0, 1, 2, 3]),
+          cf: (size) => new CobbleStoneFence(size),
         },
-        empty: new Set([
-          "cs0",
-          "cs3",
-          "cs4",
-          "cs7",
-          "ws0",
-          "ws1",
-          "ws2",
-          "ws3",
-          "ws4",
-          "ws5",
-          "ws6",
-          "ws7",
-          "bs0",
-          "bs2",
-          "bs5",
-          "bs7",
-          "bh0",
-          "bh1",
-          "sg0",
-          "sg1",
+        full: new Set([
+          "r",
+          "w",
+          "c",
+          "b",
+          "g",
+          "or",
+          "ow",
+          "db",
+          "db0",
+          "db1",
         ]),
       };
 
@@ -487,12 +497,23 @@
        */
       const textureLoader = new THREE.TextureLoader();
 
-      const loadTexture = (dirName, textureName, type, extension) =>
-        textureLoader.load(
+      const loadTexture = (
+        dirName,
+        textureName,
+        type,
+        extension,
+        repeat = [1, 1]
+      ) => {
+        const texture = textureLoader.load(
           `${TEXTURES_DIR}/${dirName}/${textureName}_${type}.${extension}`
         );
+        texture.repeat.set(...repeat);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        return texture;
+      };
 
-      const loadTextures = (name, skipped = []) =>
+      const loadTextures = (dirName, textureName, skipped = [], repeat) =>
         Object.fromEntries(
           [
             ["ambientOcclusion", "jpg"],
@@ -502,26 +523,23 @@
             ["roughness", "jpg"],
             ["metallic", "jpg"],
           ]
-            .filter(([name, _]) => !skipped.includes(name))
+            .filter(([type, _]) => !skipped.includes(type))
             .map(([type, extension]) => [
               type,
-              loadTexture(name, name, type, extension),
+              loadTexture(dirName, textureName, type, extension, repeat),
             ])
         );
 
-      const createStairs = (Constructor, size, yRotation, reversed = 0) => {
+      const createObject = (
+        Constructor,
+        size,
+        yRotation = 0,
+        zRotation = 0
+      ) => {
         const stairs = new Constructor(size);
         stairs.rotation.y = (yRotation * Math.PI) / 2;
-        if (reversed) {
-          stairs.rotation.z += Math.PI;
-        }
+        stairs.rotation.z = (zRotation * Math.PI) / 2;
         return stairs;
-      };
-
-      const createGlass = (Constructor, size, yRotation) => {
-        const glass = new Constructor(size);
-        glass.rotation.y = (yRotation * Math.PI) / 2;
-        return glass;
       };
 
       class Spotlight extends THREE.Group {
@@ -639,15 +657,56 @@
        * TEXTURES
        */
       const TEXTURES = {
-        dirt: loadTextures("dirt", ["metallic"]),
-        grass: loadTextures("grass", ["metallic"]),
-        dirtSide: loadTextures("dirt_side", ["metallic"]),
-        gravel: loadTextures("gravel", ["metallic"]),
-        stainedGlass: loadTextures("stained_glass"),
-        leaves: loadTextures("leaves", ["metallic"]),
-        bark: loadTextures("bark", ["metallic"]),
-        wallStone: loadTextures("wall_stone", ["metallic"]),
-        cobblestone: loadTextures("cobblestone", ["metallic"]),
+        dirt: loadTextures("dirt", "dirt", ["metallic"]),
+        grass: loadTextures("grass", "grass", ["metallic"]),
+        dirtSide: loadTextures("dirt_side", "dirt_side", ["metallic"]),
+        gravel: loadTextures("gravel", "gravel", ["metallic"]),
+        wood: loadTextures("wood", "wood", ["metallic"]),
+        stone: loadTextures("stone", "stone", ["metallic"]),
+        wallStone: loadTextures("wall_stone", "wall_stone", ["metallic"]),
+        cobblestone: loadTextures("cobblestone", "cobblestone", ["metallic"]),
+        bark: {
+          default: loadTextures("bark", "bark", ["metallic"]),
+          dark: loadTextures("bark", "bark_dark", ["metallic"]),
+        },
+        wool: {
+          red: loadTextures("wool", "wool_red", ["metallic"]),
+          white: loadTextures("wool", "wool_white", ["metallic"]),
+        },
+        tiles: {
+          wooden: loadTextures("tiles_wooden", "tiles_wooden", ["metallic"]),
+        },
+        leaves: {
+          texture: loadTextures("leaves", "leaves", ["metallic"]),
+          alpha: loadTexture("leaves", "leaves", "transparency", "jpg"),
+        },
+        glass: {
+          stained: {
+            texture: loadTextures("glass_stained", "glass_stained"),
+            alpha: loadTexture(
+              "glass_stained",
+              "glass_stained",
+              "transparency",
+              "jpg"
+            ),
+          },
+          frosted: {
+            texture: loadTextures("glass_frosted", "glass_frosted", [
+              "metallic",
+            ]),
+            alpha: loadTexture(
+              "glass_frosted",
+              "glass_frosted",
+              "transparency",
+              "jpg"
+            ),
+          },
+        },
+        door: {
+          front: loadTextures("door", "door_front", [], [1, 2]),
+          side: loadTextures("door", "door_side", [], [1, 2]),
+          top: loadTextures("door", "door_top", [], [1, 1]),
+        },
         skybox: {
           top: loadTexture("skybox", "clouds", "top", "jpg"),
           bottom: loadTexture("skybox", "clouds", "bottom", "jpg"),
@@ -697,8 +756,8 @@
             "position",
             new THREE.Float32BufferAttribute(positions, 3)
           );
-
           this.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+          this.computeVertexNormals();
         }
 
         #createVertices(width, height, depth, stepsCount) {
@@ -875,7 +934,7 @@
                 idx,
                 type,
                 texture,
-                settings.all || settings[idx]
+                settings[idx] || settings.all
               )
           );
         }
@@ -939,7 +998,7 @@
           const material = ObjectWithTexture.createMaterial(
             key,
             0,
-            "lambert",
+            "standard",
             texture,
             materialSettings
           );
@@ -958,8 +1017,6 @@
           if (side === "top" && !displayedFaces.includes(2))
             displayedFaces.push(2);
           else if (!displayedFaces.includes(3)) displayedFaces.push(3);
-
-          console.log({ size });
 
           super(
             key,
@@ -980,35 +1037,64 @@
         }
       }
 
-      // class Cylinder extends ObjectWithTexture {
-      //   constructor(
-      //     radius,
-      //     height,
-      //     texture,
-      //     radialSegments = 32,
-      //     heightSegments = 1,
-      //     openEnded = false,
-      //     materialType = "standard",
-      //     materialSettings = {}
-      //   ) {
-      //     const geometry = new THREE.CylinderBufferGeometry(
-      //       radius,
-      //       radius,
-      //       height,
-      //       radialSegments,
-      //       heightSegments,
-      //       openEnded
-      //     );
-      //     const uvs = geometry.attributes.uv.array;
-      //     geometry.setAttribute("uv2", new THREE.BufferAttribute(uvs, 2));
-      //     const material = ObjectWithTexture.createMaterial(
-      //       materialType,
-      //       texture,
-      //       materialSettings
-      //     );
-      //     super(geometry, material);
-      //   }
-      // }
+      class Fence extends THREE.Group {
+        constructor(key, size, texture, connectedSides = [], jointsCount = 2) {
+          super();
+          this.key = key;
+          this.texture = texture;
+          this.size = size;
+
+          this.add(this.#createPal(1, size));
+
+          for (let side of connectedSides) {
+            const joints = this.#createJoints(size, jointsCount);
+            joints.rotation.y = (Math.PI / 2) * side;
+            this.add(joints);
+          }
+        }
+
+        #createJoints(side, jointsCount) {
+          const group = new THREE.Group();
+
+          for (let i = 0; i < jointsCount; i++) {
+            const joint = this.#createPal(0.5, 0.4 * this.size);
+            joint.rotateZ(Math.PI / 2);
+            joint.position.y = (i * this.size) / (jointsCount + 1);
+            joint.position.x = 0.3 * this.size;
+            group.add(joint);
+          }
+
+          group.position.y -= this.size / (jointsCount + 1) / 2;
+
+          return group;
+        }
+
+        #createPal(scale, height) {
+          return new Block(
+            this.key,
+            {
+              width: (this.size * scale) / 5,
+              height,
+              depth: (this.size * scale) / 5,
+            },
+            this.texture,
+            undefined,
+            undefined,
+            "standard",
+            {
+              all: {
+                displacementScale: 0.05 * scale,
+              },
+              2: {
+                displacementScale: 0,
+              },
+              3: {
+                displacementScale: 0,
+              },
+            }
+          );
+        }
+      }
 
       class Dirt extends Block {
         constructor(size, displayedFaces) {
@@ -1060,12 +1146,16 @@
           super(
             "leaves",
             size,
-            TEXTURES.leaves,
+            TEXTURES.leaves.texture,
             displayedFaces,
             128,
             "standard",
             {
-              all: { displacementScale: 0.15 },
+              all: {
+                displacementScale: 0.15,
+                transparent: true,
+                alphaMap: TEXTURES.leaves.alpha,
+              },
             }
           );
         }
@@ -1073,7 +1163,7 @@
 
       class WallStone extends Block {
         constructor(size, displayedFaces) {
-          super("wall-stone", size, TEXTURES.wallStone, displayedFaces);
+          super("wall-stone", size, TEXTURES.stone, displayedFaces);
         }
       }
 
@@ -1083,41 +1173,35 @@
         }
       }
 
+      class Bark extends Block {
+        constructor(size, displayedFaces) {
+          super("bark-default", size, TEXTURES.bark.default, displayedFaces);
+        }
+      }
+
+      class DarkBark extends Block {
+        constructor(size, displayedFaces) {
+          super("bark-dark", size, TEXTURES.bark.dark, displayedFaces);
+        }
+      }
+
       class Wood extends Block {
         constructor(size, displayedFaces) {
-          super("wood", size, TEXTURES.bark, displayedFaces);
+          super("wood", size, TEXTURES.wood, displayedFaces);
         }
       }
 
-      class WoodHalf extends BlockHalf {
-        constructor(size, displayedFaces, side) {
-          super("wood", size, TEXTURES.bark, displayedFaces, side);
+      class WoodenTiles extends Block {
+        constructor(size, displayedFaces) {
+          super("wooden-tiles", size, TEXTURES.tiles.wooden, displayedFaces);
         }
       }
 
-      class WallStoneStairs extends Stairs {
-        constructor(size) {
-          super("wall-stone-stairs", size, TEXTURES.wallStone);
+      class Wool extends Block {
+        constructor(size, displayedFaces, color = "red") {
+          super(`$wool-${color}`, size, TEXTURES.wool[color], displayedFaces);
         }
       }
-
-      class CobbleStoneStairs extends Stairs {
-        constructor(size) {
-          super("cobblestone-stairs", size, TEXTURES.cobblestone);
-        }
-      }
-
-      class WoodenStairs extends Stairs {
-        constructor(size) {
-          super("wooden-stairs", size, TEXTURES.bark);
-        }
-      }
-
-      // class Bark extends Block {
-      //   constructor(radius, height, openEnded) {
-      //     super(height, TEXTURES.bark);
-      //   }
-      // }
 
       class Glass extends Block {
         constructor(key, size, texture, settings) {
@@ -1138,12 +1222,6 @@
                 displacementScale: 0.05,
                 roughness: 0.5,
                 transparent: true,
-                alphaMap: loadTexture(
-                  "stained_glass",
-                  "stained_glass",
-                  "transparency",
-                  "jpg"
-                ),
                 ...settings,
               },
             }
@@ -1153,7 +1231,90 @@
 
       class StainedGlass extends Glass {
         constructor(size) {
-          super("stained-glass", size, TEXTURES.stainedGlass);
+          super("stained-glass", size, TEXTURES.glass.stained.texture, {
+            alphaMap: TEXTURES.glass.stained.alpha,
+          });
+        }
+      }
+
+      class FrostedGlass extends Glass {
+        constructor(size) {
+          super("frosted-glass", size, TEXTURES.glass.frosted.texture, {
+            alphaMap: TEXTURES.glass.frosted.alpha,
+          });
+        }
+      }
+
+      class Door extends Block {
+        constructor(size) {
+          super("door", { width: size, height: 2 * size, depth: size / 5 }, [
+            TEXTURES.door.side,
+            TEXTURES.door.side,
+            TEXTURES.door.top,
+            TEXTURES.door.top,
+            TEXTURES.door.front,
+            TEXTURES.door.front,
+          ]);
+          this.position.y += size / 2;
+        }
+      }
+
+      class BarkHalf extends BlockHalf {
+        constructor(size, displayedFaces, side) {
+          super("bark", size, TEXTURES.bark.default, displayedFaces, side);
+        }
+      }
+
+      class WoodHalf extends BlockHalf {
+        constructor(size, displayedFaces, side) {
+          super("wood", size, TEXTURES.wood, displayedFaces, side);
+        }
+      }
+
+      class WallStoneStairs extends Stairs {
+        constructor(size) {
+          super("wall-stone-stairs", size, TEXTURES.stone);
+        }
+      }
+
+      class CobbleStoneStairs extends Stairs {
+        constructor(size) {
+          super("cobblestone-stairs", size, TEXTURES.cobblestone);
+        }
+      }
+
+      class BarkStairs extends Stairs {
+        constructor(size) {
+          super("bark-stairs", size, TEXTURES.bark.default);
+        }
+      }
+
+      class DarkBarkStairs extends Stairs {
+        constructor(size) {
+          super("dark-bark-stairs", size, TEXTURES.bark.dark);
+        }
+      }
+
+      class WoodStairs extends Stairs {
+        constructor(size) {
+          super("wooden-stairs", size, TEXTURES.wood);
+        }
+      }
+
+      class BarkFence extends Fence {
+        constructor(size, connectedSides) {
+          super("bark-fence", size, TEXTURES.bark.default, connectedSides);
+        }
+      }
+
+      class CobbleStoneFence extends Fence {
+        constructor(size, connectedSides) {
+          super(
+            "cobblestone-fence",
+            size,
+            TEXTURES.cobblestone,
+            connectedSides
+          );
         }
       }
 
@@ -1251,19 +1412,12 @@
         }
 
         #isEmptySymbol(symbol) {
-          return symbol === "_" || this.data.empty.has(symbol);
+          return symbol === "_" || !this.data.full.has(symbol);
         }
       }
 
       const church = new Construction(CHURCH, 1);
       scene.add(church);
-
-      // const glass = new StainedGlass(1);
-      // scene.add(glass);
-
-      const light = new THREE.DirectionalLight(0xfff0dd, 1);
-      light.position.set(0, 5, 10);
-      scene.add(light);
 
       /*
        * SKYBOX
@@ -1283,18 +1437,17 @@
       /*
        * LIGHTS
        */
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
       scene.add(ambientLight);
 
-      const spotLight = new Spotlight(0xffffff, 1, 0.5);
+      const spotLight = new Spotlight(0xffffff, 1, 0.1);
       spotLight.position.set(20, 40, 20);
       spotLight.lookAt(new THREE.Vector3(0, 10, 0));
       scene.add(spotLight);
 
-      const spotLight2 = new Spotlight(0xffffff, 1, 0.2);
-      spotLight2.position.set(10, 30, 10);
-      spotLight2.lookAt(new THREE.Vector3(0, 25, 0));
-      scene.add(spotLight2);
+      const directionalLight = new THREE.DirectionalLight(0xffffff);
+      directionalLight.position.set(10, 30, 20);
+      scene.add(directionalLight);
 
       /*
        * CAMERA
@@ -1305,10 +1458,15 @@
         0.1,
         10000
       );
-      camera.position.x = 15;
-      camera.position.y = 20;
-      camera.position.z = 15;
-      camera.lookAt(new THREE.Vector3(0, 10, 0));
+      camera.position.x = 14;
+      camera.position.y = 12;
+      camera.position.z = 12;
+      camera.lookAt(new THREE.Vector3(0, 8, 0));
+
+      // camera.position.x = 1;
+      // camera.position.y = 1.5;
+      // camera.position.z = 1;
+      // camera.lookAt(new THREE.Vector3(0, 0, 0));
       scene.add(camera);
 
       // Controls
@@ -1342,8 +1500,44 @@
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       };
 
+      const handleKeydown = ({ key }) => {
+        if (!CONTROLS[key]) return;
+        ACTIVE_CONTROLS[CONTROLS[key]] = true;
+      };
+
+      const handleKeyup = ({ key }) => {
+        if (!CONTROLS[key]) return;
+        ACTIVE_CONTROLS[CONTROLS[key]] = false;
+      };
+
+      const handleMovement = () => {
+        let moveVector = null;
+        if (ACTIVE_CONTROLS.forward)
+          moveVector = new THREE.Vector3(0, 0, -MOVEMENT_SPEED);
+        if (ACTIVE_CONTROLS.backward)
+          moveVector = new THREE.Vector3(0, 0, MOVEMENT_SPEED);
+        if (ACTIVE_CONTROLS.right)
+          moveVector = new THREE.Vector3(MOVEMENT_SPEED, 0, 0);
+        if (ACTIVE_CONTROLS.left)
+          moveVector = new THREE.Vector3(-MOVEMENT_SPEED, 0, 0);
+        if (ACTIVE_CONTROLS.up) {
+          camera.position.y += MOVEMENT_SPEED;
+        }
+        if (ACTIVE_CONTROLS.down) {
+          camera.position.y -= MOVEMENT_SPEED;
+        }
+
+        if (!moveVector) return;
+        const rotationMatrix = new THREE.Matrix4();
+        rotationMatrix.makeRotationFromEuler(camera.rotation);
+        moveVector.applyMatrix4(rotationMatrix);
+        camera.position.add(moveVector);
+      };
+
       // Event listeners
       window.addEventListener("resize", handleResize);
+      window.addEventListener("keydown", handleKeydown);
+      window.addEventListener("keyup", handleKeyup);
 
       /*
        * ANIMATIONS
@@ -1351,12 +1545,17 @@
       const update = () => {
         // Update stats
         stats.update();
+
         // Call animation functions
         if (guiControls.rotate) {
           church.rotation.y += 0.005;
         }
+        // Move camera
+        handleMovement();
+
         // Render the next frame
         renderer.render(scene, camera);
+
         // Request the new animation frame
         requestAnimationFrame(update);
       };
