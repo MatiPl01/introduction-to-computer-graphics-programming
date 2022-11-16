@@ -22,15 +22,14 @@
     <div id="stats"></div>
 
     <script>
-      // TODO - add shadows
       // TODO - add light sources inside the church
       // TODO - improve glass shininess in windows
       /*
        * CONSTANTS
        */
       const TEXTURES_DIR = "textures";
-      const TEXTURES_RESOLUTION = 1024;
-      const SEGMENTS_FACTOR = 4;
+      const TEXTURES_RESOLUTION = 1024; // 1024 or 128
+      const SEGMENTS_FACTOR = 1; // any positive integer
 
       const CHURCH = {
         layers: [
@@ -406,7 +405,7 @@
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,bs2,bs2,_,bs2,bs2,_,bs2,bs2,bs2,bs2,bs2,bs2,bs2,_,bs2,bs2,_,_,_,_,_
-          _,_,_,_,_,w,ws6,w,w,_,w,w,w,ws6,w,ws6,w,ws6,w,w,bs4,_,_,_,_,_
+          _,_,_,_,_,bs4,w,ws6,w,w,_,w,w,w,ws6,w,ws6,w,ws6,w,bs4,_,_,_,_,_
           _,_,_,_,_,_,_,w,_,_,_,_,_,_,_,db0,_,_,w,ws1,_,_,_,_,_,_
           _,_,_,_,_,_,_,sg1,_,_,_,_,_,_,_,db0,_,_,_,w,_,_,_,_,_,_
           _,_,_,_,_,_,_,sg1,_,_,_,_,_,_,_,db0,_,_,_,w,_,_,_,_,_,_
@@ -414,7 +413,7 @@
           _,_,_,_,_,_,_,sg1,_,_,_,_,_,_,_,db0,_,_,_,w,_,_,_,_,_,_
           _,_,_,_,_,_,_,sg1,_,_,_,_,_,_,_,db0,_,_,_,w,_,_,_,_,_,_
           _,_,_,_,_,_,_,w,_,_,_,_,_,_,_,db0,_,_,w,ws1,_,_,_,_,_,_
-          _,_,_,_,_,_,w,ws4,w,w,fg0,w,w,w,w,w,w,w,ws4,w,bs6,_,_,_,_,_
+          _,_,_,_,_,bs6,w,ws4,w,w,fg0,w,w,w,w,w,w,w,ws4,w,bs6,_,_,_,_,_
           _,_,_,_,_,bs0,bs0,_,bs0,bs0,_,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,bs0,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
           _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
@@ -877,103 +876,245 @@
         return stairs;
       };
 
-      class Animation {
-        #intervalRef = null;
-        #elapsedOnStart = 0;
-        #durationOnPause = 0;
-        #direction = 1; // 1 - playing forward, -1 - playing backward
-        #initialProgress = 0;
-        static clock = new THREE.Clock();
-        static animations = new Set();
+      class MinPriorityQueue {
+        #heap = [];
 
-        constructor(fn, duration, interval, alternate) {
-          this.fn = fn;
-          this.duration = duration;
-          this.isPlaying = false;
-          this.isFinished = false;
-          this.interval = interval;
-          this.alternate = alternate || false;
-          this.delay = 0;
+        constructor(heap = []) {
+          this.#heap = [...heap];
         }
 
-        set initialProgress(progress) {
-          this.#initialProgress = progress;
+        get length() {
+          return this.#heap.length;
+        }
+
+        peek() {
+          return this.#heap[0]?.value;
+        }
+
+        getAll() {
+          return this.#heap.map(({ value }) => value);
+        }
+
+        enqueue(priority, value) {
+          this.#heap.push({ priority, value });
+          this.#heapifyUp(this.length - 1);
+        }
+
+        dequeue() {
+          const removed = this.#heap[0].value;
+          const last = this.#heap.pop();
+          if (this.#heap.length > 0) {
+            this.#heap[0] = last;
+            this.#heapifyDown(0, this.#heap.length);
+          }
+          return removed;
+        }
+
+        clone() {
+          return new MinPriorityQueue(this.#heap);
+        }
+
+        #swap(i, j) {
+          [this.#heap[i], this.#heap[j]] = [this.#heap[j], this.#heap[i]];
+        }
+
+        #parentIdx(currentIdx) {
+          return Math.floor(currentIdx - 1 / 2);
+        }
+
+        #leftChildIdx(currentIdx) {
+          return 2 * currentIdx + 1;
+        }
+
+        #rightChildIdx(currentIdx) {
+          return 2 * currentIdx + 2;
+        }
+
+        #heapifyUp(currentIdx, endIdx = 0) {
+          while (currentIdx > endIdx) {
+            const parentIdx = this.#parentIdx(currentIdx);
+            if (
+              this.#heap[currentIdx].priority < this.#heap[parentIdx].priority
+            ) {
+              this.#swap(currentIdx, parentIdx);
+            }
+            currentIdx = parentIdx;
+          }
+        }
+
+        #heapifyDown(currentIdx, endIdx) {
+          while (true) {
+            const leftIdx = this.#leftChildIdx(currentIdx);
+            const rightIdx = this.#rightChildIdx(currentIdx);
+            let smallestIdx = currentIdx;
+
+            if (leftIdx < endIdx) {
+              if (
+                this.#heap[leftIdx].priority < this.#heap[currentIdx].priority
+              ) {
+                smallestIdx = leftIdx;
+              }
+              if (
+                rightIdx < endIdx &&
+                this.#heap[rightIdx].priority < this.#heap[smallestIdx].priority
+              ) {
+                smallestIdx = rightIdx;
+              }
+            }
+
+            if (smallestIdx !== currentIdx) {
+              this.#swap(currentIdx, smallestIdx);
+              currentIdx = smallestIdx;
+            } else break;
+          }
+        }
+      }
+
+      class Easing {
+        static linear() {
+          return (t) => t;
+        }
+
+        static easeOut() {
+          return Easing.cubicBezier(0.5, 1, 0.89, 1);
+        }
+
+        static easeOutBack() {
+          return Easing.cubicBezier(0.44, 1.56, 0.64, 1);
+        }
+
+        static easeInOut() {
+          return Easing.cubicBezier(0.45, 0, 0.55, 1);
+        }
+
+        static cubicBezier(p0, p1, p2, p3) {
+          return (t) =>
+            (1 - t) ** 3 * p0 +
+            3 * (1 - t) ** 2 * t * p1 +
+            3 * (1 - t) * t ** 2 * p2 +
+            t ** 3 * p3;
+        }
+      }
+
+      class Animation {
+        static #clock = new THREE.Clock();
+
+        #repeat = false;
+        #totalDuration = 0;
+        #allSteps = new MinPriorityQueue(); // priority is the begin time of the animation step
+        #runningSteps = new MinPriorityQueue(); // priority is the end time of the animation step
+        #remainingSteps = new MinPriorityQueue(); // part of the allSteps queue containing only animation steps that haven't begun
+
+        #status = "CREATED"; // CREATED, RUNNING, PAUSED, FINISHED
+        #lastFrameTime = 0;
+        #startTime = 0;
+
+        // fillMode - FORWARDS, BACKWARDS, BOTH
+        constructor(repeat = false) {
+          this.#repeat = repeat;
         }
 
         play() {
-          Animation.animations.add(this);
-          this.reset();
-          this.fn(this.#direction == 1 ? 0 : 1);
-          this.isPlaying = true;
-          this.#elapsedOnStart =
-            Animation.clock.getElapsedTime() - this.#durationOnPause;
-
-          if (this.interval) {
-            clearInterval(this.#intervalRef);
-            this.#intervalRef = setInterval(() => {
-              if (this.alternate) this.#direction *= -1;
-              this.finish();
-              this.play();
-            }, this.interval * 1000);
+          if (this.#status === "RUNNING") return;
+          if (this.#status === "PAUSED" || this.#status === "CREATED") {
+            this.#status = "RUNNING";
+            this.#reset();
           }
+          requestAnimationFrame(this.#update.bind(this));
         }
 
-        playAfterDelay(delay) {
-          if (this.timeOut) clearTimeout(this.timeOut);
-          this.delay = delay;
-          this.timeOut = setTimeout(this.play.bind(this), delay * 1000);
+        pause() {
+          this.#status = "PAUSED";
         }
 
-        pause(shouldClearInterval = true) {
-          Animation.animations.delete(this);
-          this.isPlaying = false;
-          this.#durationOnPause =
-            Animation.clock.getElapsedTime() - this.#elapsedOnStart;
-
-          if (shouldClearInterval && this.#intervalRef) {
-            clearInterval(this.#intervalRef);
-          }
+        get status() {
+          return this.#status;
         }
 
-        reverse() {
-          this.#direction *= -1;
+        to(object, toValues, config) {
+          this.#createStep(object, null, toValues, config);
+          return this;
         }
 
-        finish() {
-          this.pause(false);
-          this.isFinished = true;
-          this.#durationOnPause = 0;
-          Animation.animations.delete(this);
+        from(object, fromValues, config) {
+          this.#createStep(object, fromValues, null, config);
+          return this;
         }
 
-        reset() {
-          this.isFinished = false;
-          this.isPlaying = false;
-          this.#durationOnPause = 0;
+        #createStep(object, fromValues, toValues, config) {
+          const startTime = this.#totalDuration + config.delay || 0;
+          this.#totalDuration = startTime + config.duration;
+          const step = {
+            object,
+            startTime,
+            from: fromValues,
+            to: toValues,
+            duration: config.duration,
+            easing: config.easing || Easing.linear,
+            onUpdate: config.onUpdate,
+          };
+          this.#allSteps.enqueue(startTime, step);
+          this.#remainingSteps.enqueue(startTime, step);
         }
 
         #update() {
-          const progress = this.#calcProgress();
-          this.fn(Math.min(1, progress));
-          if (
-            (this.#direction === 1 && progress >= 1) ||
-            (this.#direction === -1 && progress <= 0)
-          ) {
-            this.finish();
+          for (const step of this.#runningSteps.getAll()) {
+            this.#updateStep(step);
+          }
+
+          this.#updateRunningSteps();
+          if (this.#status !== "RUNNING") return;
+          requestAnimationFrame(this.#update.bind(this));
+        }
+
+        #updateStep(step) {
+          const progress = this.#calcProgress(step);
+          const { object, from, to, easing, onUpdate } = step;
+          Object.keys(from).forEach((key) => {
+            object[key] = from[key] + (to[key] - from[key]) * easing(progress);
+          });
+          onUpdate?.(progress);
+        }
+
+        #updateRunningSteps() {
+          const elapsed = Animation.#clock.getElapsedTime() - this.#startTime;
+
+          while (this.#calcProgress(this.#runningSteps.peek()) === 1) {
+            this.#runningSteps.dequeue();
+          }
+
+          while (this.#remainingSteps.peek()?.startTime <= elapsed) {
+            const step = { ...this.#remainingSteps.dequeue() };
+            if (step.from) {
+              step.to = Object.fromEntries(
+                Object.keys(step.from).map((key) => [key, step.object[key]])
+              );
+            } else {
+              step.from = Object.fromEntries(
+                Object.keys(step.to).map((key) => [key, step.object[key]])
+              );
+            }
+            this.#runningSteps.enqueue(step.startTime + step.duration, step);
+          }
+
+          if (!this.#runningSteps.peek() && !this.#remainingSteps.peek()) {
+            this.#status = "FINISHED";
+            if (this.#repeat) this.play();
           }
         }
 
-        static update() {
-          Animation.animations.forEach((animation) => animation.#update());
+        #calcProgress(step) {
+          if (!step) return 0;
+          const elapsed = Animation.#clock.getElapsedTime() - step.startTime;
+          const progress = elapsed / step.duration;
+          return clamp(0, 1, progress);
         }
 
-        #calcProgress() {
-          const t = Animation.clock.getElapsedTime() - this.#elapsedOnStart;
-          let progress = t / this.duration + this.#initialProgress;
-          if (this.interval && this.#initialProgress && progress >= 1) {
-            progress -= 1;
-          }
-          return this.#direction == 1 ? progress : 1 - progress;
+        #reset() {
+          const currentElapsed = Animation.#clock.getElapsedTime();
+          this.#remainingSteps = this.#allSteps.clone();
+          this.#lastFrameTime = currentElapsed;
+          this.#startTime = currentElapsed;
         }
       }
 
@@ -1184,12 +1325,12 @@
       const scene = new THREE.Scene();
 
       // GUI
-      const guiControls = {
-        rotate: false,
-      };
+      // const guiControls = {
+      //   rotate: false,
+      // };
 
-      const gui = new dat.GUI();
-      gui.add(guiControls, "rotate");
+      // const gui = new dat.GUI();
+      // gui.add(guiControls, "rotate");
 
       // Statistics
       const stats = new Stats();
@@ -1200,8 +1341,8 @@
       document.getElementById("stats").appendChild(stats.domElement);
 
       // Helpers
-      const axesHelper = new THREE.AxesHelper(25);
-      scene.add(axesHelper);
+      // const axesHelper = new THREE.AxesHelper(25);
+      // scene.add(axesHelper);
 
       /*
        * SIZES
@@ -1447,8 +1588,6 @@
             const maps = {
               map: texture.baseColor,
               aoMap: texture.ambientOcclusion,
-              displacementMap: texture.height,
-              displacementScale: 1,
             };
 
             if (texture.metallnessMap) {
@@ -1735,7 +1874,7 @@
             displayedFaces,
             undefined,
             "standard",
-            { all: { displacementScale: 1 } }
+            { all: { displacementScale: 0.5 } }
           );
         }
       }
@@ -2182,20 +2321,20 @@
         0.1,
         10000
       );
-      // perspectiveCamera.position.x = -30;
-      // perspectiveCamera.position.y = 35;
-      // perspectiveCamera.position.z = -20;
-      perspectiveCamera.position.x = 8;
-      perspectiveCamera.position.y = 7.75;
-      perspectiveCamera.position.z = 5;
+      perspectiveCamera.position.x = -20;
+      perspectiveCamera.position.y = 22;
+      perspectiveCamera.position.z = -14;
+      // perspectiveCamera.position.x = 8;
+      // perspectiveCamera.position.y = 7.75;
+      // perspectiveCamera.position.z = 5;
 
-      perspectiveCamera.lookAt(new THREE.Vector3(0, 7, 0));
+      perspectiveCamera.lookAt(new THREE.Vector3(0, 10, 0));
       scene.add(perspectiveCamera);
 
-      // const orbitControls = new THREE.OrbitControls(perspectiveCamera);
-      // const camera = perspectiveCamera;
+      const orbitControls = new THREE.OrbitControls(perspectiveCamera);
+      const camera = perspectiveCamera;
 
-      const camera = new FirstPersonCamera(perspectiveCamera);
+      // const camera = new FirstPersonCamera(perspectiveCamera);
 
       /*
        * RENDERER
@@ -2272,24 +2411,21 @@
         };
       };
 
+      const moveCamera =
+        (camera, from, to, fromTarget, toTarget) => (progress) => {
+          camera.position.copy(calcProgressVector(from, to, progress));
+          camera.lookAt(calcProgressVector(fromTarget, toTarget, progress));
+        };
+
+      const rotateY = (object, from, to) => (progress) => {
+        object.rotation.y = from + (to - from) * progress;
+      };
+
       const update = () => {
         // Update stats
         stats.update();
         // Update camera
-        camera.update();
-        // Call animation functions
-        if (guiControls.rotate) {
-          // TODO - move animations somewhere else
-          // church.rotation.y += 0.005;
-          if (!animations.door.left.isFinished) {
-            if (!animations.door.left.isPlaying) animations.door.left.play();
-          } else {
-            animations.door.left.reverse();
-            animations.door.left.play();
-          }
-        }
-        // Update animations
-        // Animation.update();
+        // camera.update();
         // Render the next frame
         renderer.render(scene, perspectiveCamera);
         // Request the new animation frame
@@ -2304,17 +2440,49 @@
       });
       scene.add(church);
 
-      const [leftDoor, rightDoor] = church.getObjects("d0");
-
-      const animations = {
-        door: {
-          left: new Animation(openDoorAnimation(leftDoor, "left", -1), 0.75),
-          right: new Animation(openDoorAnimation(rightDoor, "right", -1), 0.75),
-        },
-      };
+      // const [leftDoor, rightDoor] = church.getObjects("d0");
 
       handleResize();
       update();
+
+      camera.position.set(-100, -40, 0);
+      camera.lookAt(new THREE.Vector3(0, 30, 0));
+
+      const animations = [
+        new Animation()
+          .to(
+            camera.position,
+            {
+              x: -30,
+              y: 20,
+            },
+            {
+              duration: 2,
+              easing: Easing.easeInOut(),
+              onUpdate(progress) {
+                camera.lookAt(
+                  new THREE.Vector3(0, (1 - progress) * 20 + 10, 0)
+                );
+              },
+            }
+          )
+          .to(
+            church.rotation,
+            {
+              y: -Math.PI / 2,
+            },
+            {
+              duration: 2,
+              easing: Easing.easeInOut(),
+              delay: -1,
+            }
+          ),
+      ];
+
+      // TODO - run ths after content is loaded
+      setTimeout(() => {
+        animations.forEach((animation) => animation.play());
+      }, 3000);
     </script>
   </body>
 </html>
