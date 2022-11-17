@@ -22,8 +22,6 @@
     <div id="stats"></div>
 
     <script>
-      // TODO - add light sources inside the church
-      // TODO - improve glass shininess in windows
       /*
        * CONSTANTS
        */
@@ -815,6 +813,147 @@
       };
 
       /*
+       * LIBRARIES
+       */
+      /**
+       * https://github.com/gre/bezier-easing
+       * BezierEasing - use bezier curve for transition easing function
+       * by Gaëtan Renaudeau 2014 - 2015 – MIT License
+       */
+
+      const cubicBezier = (() => {
+        // These values are established by empiricism with tests (tradeoff: performance VS precision)
+        var NEWTON_ITERATIONS = 4;
+        var NEWTON_MIN_SLOPE = 0.001;
+        var SUBDIVISION_PRECISION = 0.0000001;
+        var SUBDIVISION_MAX_ITERATIONS = 10;
+
+        var kSplineTableSize = 11;
+        var kSampleStepSize = 1.0 / (kSplineTableSize - 1.0);
+
+        var float32ArraySupported = typeof Float32Array === "function";
+
+        function A(aA1, aA2) {
+          return 1.0 - 3.0 * aA2 + 3.0 * aA1;
+        }
+        function B(aA1, aA2) {
+          return 3.0 * aA2 - 6.0 * aA1;
+        }
+        function C(aA1) {
+          return 3.0 * aA1;
+        }
+
+        // Returns x(t) given t, x1, and x2, or y(t) given t, y1, and y2.
+        function calcBezier(aT, aA1, aA2) {
+          return ((A(aA1, aA2) * aT + B(aA1, aA2)) * aT + C(aA1)) * aT;
+        }
+
+        // Returns dx/dt given t, x1, and x2, or dy/dt given t, y1, and y2.
+        function getSlope(aT, aA1, aA2) {
+          return 3.0 * A(aA1, aA2) * aT * aT + 2.0 * B(aA1, aA2) * aT + C(aA1);
+        }
+
+        function binarySubdivide(aX, aA, aB, mX1, mX2) {
+          var currentX,
+            currentT,
+            i = 0;
+          do {
+            currentT = aA + (aB - aA) / 2.0;
+            currentX = calcBezier(currentT, mX1, mX2) - aX;
+            if (currentX > 0.0) {
+              aB = currentT;
+            } else {
+              aA = currentT;
+            }
+          } while (
+            Math.abs(currentX) > SUBDIVISION_PRECISION &&
+            ++i < SUBDIVISION_MAX_ITERATIONS
+          );
+          return currentT;
+        }
+
+        function newtonRaphsonIterate(aX, aGuessT, mX1, mX2) {
+          for (var i = 0; i < NEWTON_ITERATIONS; ++i) {
+            var currentSlope = getSlope(aGuessT, mX1, mX2);
+            if (currentSlope === 0.0) {
+              return aGuessT;
+            }
+            var currentX = calcBezier(aGuessT, mX1, mX2) - aX;
+            aGuessT -= currentX / currentSlope;
+          }
+          return aGuessT;
+        }
+
+        function LinearEasing(x) {
+          return x;
+        }
+
+        function bezier(mX1, mY1, mX2, mY2) {
+          if (!(0 <= mX1 && mX1 <= 1 && 0 <= mX2 && mX2 <= 1)) {
+            throw new Error("bezier x values must be in [0, 1] range");
+          }
+
+          if (mX1 === mY1 && mX2 === mY2) {
+            return LinearEasing;
+          }
+
+          // Precompute samples table
+          var sampleValues = float32ArraySupported
+            ? new Float32Array(kSplineTableSize)
+            : new Array(kSplineTableSize);
+          for (var i = 0; i < kSplineTableSize; ++i) {
+            sampleValues[i] = calcBezier(i * kSampleStepSize, mX1, mX2);
+          }
+
+          function getTForX(aX) {
+            var intervalStart = 0.0;
+            var currentSample = 1;
+            var lastSample = kSplineTableSize - 1;
+
+            for (
+              ;
+              currentSample !== lastSample && sampleValues[currentSample] <= aX;
+              ++currentSample
+            ) {
+              intervalStart += kSampleStepSize;
+            }
+            --currentSample;
+
+            // Interpolate to provide an initial guess for t
+            var dist =
+              (aX - sampleValues[currentSample]) /
+              (sampleValues[currentSample + 1] - sampleValues[currentSample]);
+            var guessForT = intervalStart + dist * kSampleStepSize;
+
+            var initialSlope = getSlope(guessForT, mX1, mX2);
+            if (initialSlope >= NEWTON_MIN_SLOPE) {
+              return newtonRaphsonIterate(aX, guessForT, mX1, mX2);
+            } else if (initialSlope === 0.0) {
+              return guessForT;
+            } else {
+              return binarySubdivide(
+                aX,
+                intervalStart,
+                intervalStart + kSampleStepSize,
+                mX1,
+                mX2
+              );
+            }
+          }
+
+          return function BezierEasing(x) {
+            // Because JavaScript number are imprecise, we should guarantee the extremes are right.
+            if (x === 0 || x === 1) {
+              return x;
+            }
+            return calcBezier(getTForX(x), mY1, mY2);
+          };
+        }
+
+        return bezier;
+      })();
+
+      /*
        * UTILS
        */
       const clamp = (num, min, max) => Math.min(Math.max(min, num), max);
@@ -975,24 +1114,24 @@
           return (t) => t;
         }
 
-        static easeOut() {
-          return Easing.cubicBezier(0.5, 1, 0.89, 1);
+        static easeIn() {
+          return cubicBezier(0.32, 0, 0.67, 0);
         }
 
-        static easeOutBack() {
-          return Easing.cubicBezier(0.44, 1.56, 0.64, 1);
+        static easeOut() {
+          return cubicBezier(0.22, 0.61, 0.36, 1);
         }
 
         static easeInOut() {
-          return Easing.cubicBezier(0.45, 0, 0.55, 1);
+          return cubicBezier(0.45, 0.05, 0.55, 0.95);
         }
 
-        static cubicBezier(p0, p1, p2, p3) {
-          return (t) =>
-            (1 - t) ** 3 * p0 +
-            3 * (1 - t) ** 2 * t * p1 +
-            3 * (1 - t) * t ** 2 * p2 +
-            t ** 3 * p3;
+        static easeInOutBack() {
+          return cubicBezier(0.68, -0.6, 0.32, 1.6);
+        }
+
+        static cubicBezier(mX1, mY1, mX2, mY2) {
+          return cubicBezier(mX1, mY1, mX2, mY2);
         }
       }
 
@@ -1004,6 +1143,7 @@
         #allSteps = new MinPriorityQueue(); // priority is the begin time of the animation step
         #runningSteps = new MinPriorityQueue(); // priority is the end time of the animation step
         #remainingSteps = new MinPriorityQueue(); // part of the allSteps queue containing only animation steps that haven't begun
+        #groupedAnimations = {};
 
         #status = "CREATED"; // CREATED, RUNNING, PAUSED, FINISHED
         #lastFrameTime = 0;
@@ -1031,30 +1171,60 @@
           return this.#status;
         }
 
-        to(object, toValues, config) {
-          this.#createStep(object, null, toValues, config);
+        add(animationName) {
+          this.#groupedAnimations[animationName] = {
+            startTime: this.#totalDuration,
+          };
           return this;
         }
 
-        from(object, fromValues, config) {
-          this.#createStep(object, fromValues, null, config);
+        to(object, toValues, config, animationName) {
+          this.#createStep(object, null, toValues, config, animationName);
           return this;
         }
 
-        #createStep(object, fromValues, toValues, config) {
-          const startTime = this.#totalDuration + config.delay || 0;
-          this.#totalDuration = startTime + config.duration;
-          const step = {
+        from(object, fromValues, config, animationName) {
+          this.#createStep(object, fromValues, null, config, animationName);
+          return this;
+        }
+
+        run(fn, config, animationName) {
+          this.#saveStep({
+            fn,
+            startTime: this.#calcStartTime(animationName, config?.delay),
+            duration: config.duration,
+            easing: config.easing || Easing.linear(),
+            onUpdate: config.onUpdate,
+            onFinish: config.onFinish,
+          });
+          return this;
+        }
+
+        #createStep(object, fromValues, toValues, config, animationName) {
+          this.#saveStep({
             object,
-            startTime,
+            startTime: this.#calcStartTime(animationName, config?.delay),
             from: fromValues,
             to: toValues,
             duration: config.duration,
-            easing: config.easing || Easing.linear,
+            easing: config.easing || Easing.linear(),
             onUpdate: config.onUpdate,
-          };
-          this.#allSteps.enqueue(startTime, step);
-          this.#remainingSteps.enqueue(startTime, step);
+            onFinish: config.onFinish,
+          });
+        }
+
+        #calcStartTime(animationName, delay) {
+          return (
+            (animationName && this.#groupedAnimations[animationName]
+              ? this.#groupedAnimations[animationName].startTime
+              : this.#totalDuration) + (delay || 0)
+          );
+        }
+
+        #saveStep(step) {
+          this.#totalDuration = step.startTime + step.duration;
+          this.#allSteps.enqueue(step.startTime, step);
+          this.#remainingSteps.enqueue(step.startTime, step);
         }
 
         #update() {
@@ -1069,10 +1239,18 @@
 
         #updateStep(step) {
           const progress = this.#calcProgress(step);
-          const { object, from, to, easing, onUpdate } = step;
-          Object.keys(from).forEach((key) => {
-            object[key] = from[key] + (to[key] - from[key]) * easing(progress);
-          });
+          const { easing, onUpdate } = step;
+
+          if (step.object) {
+            Object.keys(step.from).forEach((key) => {
+              step.object[key] =
+                step.from[key] +
+                (step.to[key] - step.from[key]) * easing(progress);
+            });
+          } else {
+            step.fn(progress);
+          }
+
           onUpdate?.(progress);
         }
 
@@ -1080,6 +1258,7 @@
           const elapsed = Animation.#clock.getElapsedTime() - this.#startTime;
 
           while (this.#calcProgress(this.#runningSteps.peek()) === 1) {
+            this.#runningSteps.peek().onFinish?.();
             this.#runningSteps.dequeue();
           }
 
@@ -1089,7 +1268,7 @@
               step.to = Object.fromEntries(
                 Object.keys(step.from).map((key) => [key, step.object[key]])
               );
-            } else {
+            } else if (step.to) {
               step.from = Object.fromEntries(
                 Object.keys(step.to).map((key) => [key, step.object[key]])
               );
@@ -1107,7 +1286,7 @@
           if (!step) return 0;
           const elapsed = Animation.#clock.getElapsedTime() - step.startTime;
           const progress = elapsed / step.duration;
-          return clamp(0, 1, progress);
+          return clamp(progress, 0, 1);
         }
 
         #reset() {
@@ -2058,6 +2237,45 @@
         }
       }
 
+      class ReflectiveSphere extends THREE.Group {
+        static spheres = new Set();
+
+        constructor(
+          size,
+          segments = 50,
+          near = 1,
+          far = 10000,
+          distance = 500
+        ) {
+          super();
+          this.cubeCamera = new THREE.CubeCamera(near, far, distance);
+          const geometry = new THREE.SphereGeometry(size, segments, segments);
+          const material = new THREE.MeshBasicMaterial({
+            envMap: this.cubeCamera.renderTarget,
+          });
+          this.mirrorSphere = new THREE.Mesh(geometry, material);
+          this.add(this.cubeCamera);
+          this.add(this.mirrorSphere);
+        }
+
+        track() {
+          ReflectiveSphere.spheres.add(this);
+        }
+
+        remove() {
+          super.remove(this.mirrorSphere);
+          super.remove(this.cubeCamera);
+          scene.remove(this);
+          ReflectiveSphere.spheres.delete(this);
+        }
+
+        static update() {
+          ReflectiveSphere.spheres.forEach((sphere) => {
+            sphere.cubeCamera.update(renderer, scene);
+          });
+        }
+      }
+
       class Construction extends THREE.Group {
         constructor(data, blockSize, settings = {}) {
           super();
@@ -2186,7 +2404,6 @@
       );
       skybox.rotation.y = -Math.PI / 2;
       scene.add(skybox);
-
       /*
        * LIGHTS
        */
@@ -2198,7 +2415,6 @@
           if (target) this.setTarget(target);
           applySettings?.(this);
           scene.add(this._target);
-          scene.add(this);
         },
 
         setTarget(target) {
@@ -2213,12 +2429,15 @@
         setPosition(position) {
           this.position.copy(position);
         },
+
+        updateHelper() {
+          this.target.updateMatrixWorld();
+        },
       };
 
       class AmbientLight extends THREE.AmbientLight {
         constructor(color, intensity = 1) {
           super(color, intensity);
-          scene.add(this);
         }
       }
 
@@ -2231,7 +2450,10 @@
         }
 
         showHelper(size = 5) {
-          if (this.#helper) this.#helper.dispose();
+          if (this.#helper) {
+            this.#helper.dispose();
+            scene.remove(this.#helper);
+          }
           this.target.updateMatrixWorld();
           this.#helper = new THREE.DirectionalLightHelper(this, size);
           scene.add(this.#helper);
@@ -2257,7 +2479,10 @@
         }
 
         showHelper() {
-          if (this.#helper) this.#helper.dispose();
+          if (this.#helper) {
+            this.#helper.dispose();
+            scene.remove(this.#helper);
+          }
           this.target.updateMatrixWorld();
           this.#helper = new THREE.SpotLightHelper(this);
           scene.add(this.#helper);
@@ -2270,20 +2495,6 @@
       const LIGHTS = {
         ambient: new AmbientLight(COLORS.white, 0.5),
         directional: [
-          new DirectionalLight(
-            COLORS.white,
-            1,
-            new THREE.Vector3(-35, 60, 15),
-            new THREE.Vector3(-8, 14, -1),
-            (instance) => {
-              instance.castShadow = true;
-              instance.shadow.radius = 5;
-              instance.shadow.camera.left = -10;
-              instance.shadow.camera.right = 10;
-              instance.shadow.camera.top = 10;
-              instance.shadow.camera.bottom = -10;
-            }
-          ),
           new DirectionalLight(
             COLORS.white,
             0.5,
@@ -2301,16 +2512,35 @@
             1,
             500,
             0.25,
-            new THREE.Vector3(-35, 60, 15),
-            new THREE.Vector3(-8, 14, -1),
+            new THREE.Vector3(-40, 30, 10),
+            new THREE.Vector3(-4, 30, -1),
             undefined,
             undefined,
             (instance) => {
               instance.castShadow = true;
             }
           ),
+          new SpotLight(
+            COLORS.white,
+            0.5,
+            1,
+            Math.PI / 2,
+            new THREE.Vector3(2, 8, 10),
+            new THREE.Vector3(2, 0, -15),
+            undefined,
+            undefined,
+            (instance) => {
+              instance.castShadow = true;
+              instance.shadow.radius = 5;
+              instance.shadow.camera.left = -10;
+              instance.shadow.camera.right = 10;
+              instance.shadow.camera.top = 10;
+              instance.shadow.camera.bottom = -10;
+            }
+          ),
         ],
       };
+      scene.add(LIGHTS.ambient);
 
       /*
        * CAMERA
@@ -2321,14 +2551,6 @@
         0.1,
         10000
       );
-      perspectiveCamera.position.x = -20;
-      perspectiveCamera.position.y = 22;
-      perspectiveCamera.position.z = -14;
-      // perspectiveCamera.position.x = 8;
-      // perspectiveCamera.position.y = 7.75;
-      // perspectiveCamera.position.z = 5;
-
-      perspectiveCamera.lookAt(new THREE.Vector3(0, 10, 0));
       scene.add(perspectiveCamera);
 
       const orbitControls = new THREE.OrbitControls(perspectiveCamera);
@@ -2341,6 +2563,7 @@
        */
       const renderer = new THREE.WebGLRenderer({
         canvas,
+        alpha: true,
         antialias: true,
       });
       renderer.setClearColor(new THREE.Color(0xeeeeee));
@@ -2426,6 +2649,8 @@
         stats.update();
         // Update camera
         // camera.update();
+        // Update cube cameras
+        ReflectiveSphere.update(renderer, scene);
         // Render the next frame
         renderer.render(scene, perspectiveCamera);
         // Request the new animation frame
@@ -2435,54 +2660,248 @@
       /*
        * MAIN
        */
+      const reflectiveSphere = new ReflectiveSphere(
+        25,
+        undefined,
+        25,
+        10000,
+        500
+      );
+      const reflectiveSphereGroup = new THREE.Group();
+      reflectiveSphereGroup.add(reflectiveSphere);
+      reflectiveSphere.position.set(50, 10, 0);
+      reflectiveSphere.track();
+      scene.add(reflectiveSphereGroup);
+
       const church = new Construction(CHURCH, 1, {
         storeObjects: new Set(["d0"]),
       });
       scene.add(church);
 
-      // const [leftDoor, rightDoor] = church.getObjects("d0");
+      const [leftDoor, rightDoor] = church.getObjects("d0");
 
       handleResize();
       update();
 
-      camera.position.set(-100, -40, 0);
-      camera.lookAt(new THREE.Vector3(0, 30, 0));
+      camera.position.set(-100, 15, 0);
+      camera.lookAt(0, 30, 0);
 
-      const animations = [
-        new Animation()
-          .to(
-            camera.position,
-            {
-              x: -30,
-              y: 20,
+      const openLeftDoor = openDoorAnimation(leftDoor, "left");
+      const openRightDoor = openDoorAnimation(rightDoor, "right");
+
+      const openDoor = (progress) => {
+        openLeftDoor(progress);
+        openRightDoor(progress);
+      };
+
+      const updateSpotLight = (
+        spotLight,
+        position,
+        targetPosition,
+        angle,
+        distance
+      ) => {
+        const initial = {
+          position: spotLight.position.clone(),
+          targetPosition: spotLight.target.position.clone(),
+          distance: spotLight.distance,
+          angle: spotLight.angle,
+        };
+
+        return (progress) => {
+          updatePosition(spotLight, initial.position, position, progress);
+          if (targetPosition)
+            updatePosition(
+              spotLight.target,
+              initial.targetPosition,
+              targetPosition,
+              progress
+            );
+          if (distance)
+            spotLight.distance =
+              initial.distance + (distance - initial.distance) * progress;
+          if (angle)
+            spotLight.angle =
+              initial.angle + (angle - initial.angle) * progress;
+        };
+      };
+
+      const mainAnimation = new Animation()
+        .to(
+          reflectiveSphereGroup.rotation,
+          { y: 7 * Math.PI },
+          {
+            duration: 12,
+            easing: Easing.easeInOut(),
+            onUpdate(progress) {
+              reflectiveSphere.cubeCamera.rotation.y =
+                -Math.PI * Math.abs(Math.sin(3.5 * progress * Math.PI));
             },
-            {
-              duration: 2,
-              easing: Easing.easeInOut(),
-              onUpdate(progress) {
-                camera.lookAt(
-                  new THREE.Vector3(0, (1 - progress) * 20 + 10, 0)
-                );
-              },
-            }
-          )
-          .to(
-            church.rotation,
-            {
-              y: -Math.PI / 2,
+            onFinish() {
+              scene.add(LIGHTS.spot[0]);
+              scene.add(LIGHTS.spot[1]);
+              scene.add(LIGHTS.directional[0]);
+              reflectiveSphere.remove();
             },
-            {
-              duration: 2,
-              easing: Easing.easeInOut(),
-              delay: -1,
-            }
+          }
+        )
+        .add("step1")
+        .to(
+          camera.position,
+          {
+            x: -30,
+            y: 20,
+            z: -10,
+          },
+          {
+            delay: -1,
+            duration: 3,
+            easing: Easing.cubicBezier(0.5, 0.08, 0.25, 0.9),
+            onUpdate(progress) {
+              camera.lookAt(0, (1 - progress) * 20 + 10, 0);
+            },
+          },
+          "step1"
+        )
+        .run(
+          updateSpotLight(
+            LIGHTS.spot[0],
+            new THREE.Vector3(-35, 60, 15),
+            new THREE.Vector3(-8, 14, -1)
           ),
-      ];
+          {
+            duration: 2,
+            delay: 1,
+            easing: Easing.cubicBezier(0.5, 0.08, 0.25, 0.9),
+          },
+          "step1"
+        )
+        .add("step2")
+        .to(
+          church.rotation,
+          { y: -0.5 * Math.PI },
+          {
+            easing: Easing.easeInOut(),
+            duration: 2,
+            delay: -1,
+          },
+          "step2"
+        )
+        .to(
+          camera.position,
+          { x: -15, y: 9, z: 4 },
+          {
+            easing: Easing.easeIn(),
+            duration: 1.5,
+            onUpdate(progress) {
+              camera.lookAt(0, 10, 0);
+            },
+          },
+          "step2"
+        )
+        .add("step3")
+        .to(
+          camera.position,
+          { x: -6, y: 7.5, z: 5 },
+          {
+            duration: 1,
+            onUpdate(progress) {
+              camera.lookAt(0, 10 - 4 * progress, 5 * progress);
+            },
+          },
+          "step3"
+        )
+        .run(
+          openDoor,
+          {
+            duration: 1,
+            delay: 0.5,
+          },
+          "step3"
+        )
+        .to(
+          camera.position,
+          { x: 2 },
+          {
+            delay: -0.5,
+            duration: 2.5,
+            easing: Easing.easeOut(),
+            onUpdate(progress) {
+              camera.lookAt(2 * progress, 6 + 10 * progress, 5 - 20 * progress);
+            },
+          }
+        )
+        .to(
+          LIGHTS.spot[1],
+          { distance: 200 },
+          { duration: 2, delay: 1 },
+          "step3"
+        )
+        .add("step4")
+        .to(
+          camera.position,
+          { y: 12, z: 2 },
+          {
+            duration: 3,
+            easing: Easing.easeInOut(),
+            onUpdate(progress) {
+              camera.lookAt(2, 16 - 20 * progress, -15 - 10 * progress);
+            },
+          },
+          "step4"
+        )
+        .to(
+          LIGHTS.directional[0].position,
+          { x: 0, y: 20, z: 20 },
+          {
+            duration: 3,
+          },
+          "step4"
+        )
+        .add("step5")
+        .to(
+          camera.position,
+          {
+            x: 0,
+            y: 25,
+            z: -25,
+          },
+          {
+            duration: 3,
+            easing: Easing.easeInOut(),
+            onUpdate(progress) {
+              camera.lookAt(2, -4 + 20 * progress, -25 + 20 * progress);
+            },
+          },
+          "step5"
+        )
+        .to(LIGHTS.spot[1], { distance: 1 }, { duration: 2, delay: 1 }, "step5")
+        .run(
+          updateSpotLight(
+            LIGHTS.spot[0],
+            new THREE.Vector3(0, 90, -60),
+            new THREE.Vector3(-10, 10, 0)
+          ),
+          {
+            duration: 2,
+            delay: 2,
+            easing: Easing.easeInOut(),
+          },
+          "step5"
+        )
+        .to(
+          church.rotation,
+          { y: -0.75 * Math.PI },
+          {
+            duration: 1.5,
+            delay: -2,
+            easing: Easing.easeInOut(),
+          }
+        );
 
-      // TODO - run ths after content is loaded
-      setTimeout(() => {
-        animations.forEach((animation) => animation.play());
-      }, 3000);
+      THREE.DefaultLoadingManager.onLoad = () => {
+        mainAnimation.play();
+      };
     </script>
   </body>
 </html>
