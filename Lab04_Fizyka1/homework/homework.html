@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>[Homework] Lab4 - Physics</title>
+    <script type="text/javascript" src="three.min.js"></script>
+    <script type="text/javascript" src="stats.js"></script>
+    <script type="text/javascript" src="physi.js"></script>
+    <script type="text/javascript" src="OrbitControls.js"></script>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="webgl"></canvas>
+    <div id="stats"></div>
+
+    <script>
+      "use strict";
+
+      /*
+       * LIBRARIES
+       */
+      /**
+       * https://github.com/gre/bezier-easing
+       * BezierEasing - use bezier curve for transition easing function
+       * by Gaëtan Renaudeau 2014 - 2015 – MIT License
+       */
+
+      const cubicBezier = (() => {
+        // These values are established by empiricism with tests (tradeoff: performance VS precision)
+        var NEWTON_ITERATIONS = 4;
+        var NEWTON_MIN_SLOPE = 0.001;
+        var SUBDIVISION_PRECISION = 0.0000001;
+        var SUBDIVISION_MAX_ITERATIONS = 10;
+
+        var kSplineTableSize = 11;
+        var kSampleStepSize = 1.0 / (kSplineTableSize - 1.0);
+
+        var float32ArraySupported = typeof Float32Array === "function";
+
+        function A(aA1, aA2) {
+          return 1.0 - 3.0 * aA2 + 3.0 * aA1;
+        }
+        function B(aA1, aA2) {
+          return 3.0 * aA2 - 6.0 * aA1;
+        }
+        function C(aA1) {
+          return 3.0 * aA1;
+        }
+
+        // Returns x(t) given t, x1, and x2, or y(t) given t, y1, and y2.
+        function calcBezier(aT, aA1, aA2) {
+          return ((A(aA1, aA2) * aT + B(aA1, aA2)) * aT + C(aA1)) * aT;
+        }
+
+        // Returns dx/dt given t, x1, and x2, or dy/dt given t, y1, and y2.
+        function getSlope(aT, aA1, aA2) {
+          return 3.0 * A(aA1, aA2) * aT * aT + 2.0 * B(aA1, aA2) * aT + C(aA1);
+        }
+
+        function binarySubdivide(aX, aA, aB, mX1, mX2) {
+          var currentX,
+            currentT,
+            i = 0;
+          do {
+            currentT = aA + (aB - aA) / 2.0;
+            currentX = calcBezier(currentT, mX1, mX2) - aX;
+            if (currentX > 0.0) {
+              aB = currentT;
+            } else {
+              aA = currentT;
+            }
+          } while (
+            Math.abs(currentX) > SUBDIVISION_PRECISION &&
+            ++i < SUBDIVISION_MAX_ITERATIONS
+          );
+          return currentT;
+        }
+
+        function newtonRaphsonIterate(aX, aGuessT, mX1, mX2) {
+          for (var i = 0; i < NEWTON_ITERATIONS; ++i) {
+            var currentSlope = getSlope(aGuessT, mX1, mX2);
+            if (currentSlope === 0.0) {
+              return aGuessT;
+            }
+            var currentX = calcBezier(aGuessT, mX1, mX2) - aX;
+            aGuessT -= currentX / currentSlope;
+          }
+          return aGuessT;
+        }
+
+        function LinearEasing(x) {
+          return x;
+        }
+
+        function bezier(mX1, mY1, mX2, mY2) {
+          if (!(0 <= mX1 && mX1 <= 1 && 0 <= mX2 && mX2 <= 1)) {
+            throw new Error("bezier x values must be in [0, 1] range");
+          }
+
+          if (mX1 === mY1 && mX2 === mY2) {
+            return LinearEasing;
+          }
+
+          // Precompute samples table
+          var sampleValues = float32ArraySupported
+            ? new Float32Array(kSplineTableSize)
+            : new Array(kSplineTableSize);
+          for (var i = 0; i < kSplineTableSize; ++i) {
+            sampleValues[i] = calcBezier(i * kSampleStepSize, mX1, mX2);
+          }
+
+          function getTForX(aX) {
+            var intervalStart = 0.0;
+            var currentSample = 1;
+            var lastSample = kSplineTableSize - 1;
+
+            for (
+              ;
+              currentSample !== lastSample && sampleValues[currentSample] <= aX;
+              ++currentSample
+            ) {
+              intervalStart += kSampleStepSize;
+            }
+            --currentSample;
+
+            // Interpolate to provide an initial guess for t
+            var dist =
+              (aX - sampleValues[currentSample]) /
+              (sampleValues[currentSample + 1] - sampleValues[currentSample]);
+            var guessForT = intervalStart + dist * kSampleStepSize;
+
+            var initialSlope = getSlope(guessForT, mX1, mX2);
+            if (initialSlope >= NEWTON_MIN_SLOPE) {
+              return newtonRaphsonIterate(aX, guessForT, mX1, mX2);
+            } else if (initialSlope === 0.0) {
+              return guessForT;
+            } else {
+              return binarySubdivide(
+                aX,
+                intervalStart,
+                intervalStart + kSampleStepSize,
+                mX1,
+                mX2
+              );
+            }
+          }
+
+          return function BezierEasing(x) {
+            // Because JavaScript number are imprecise, we should guarantee the extremes are right.
+            if (x === 0 || x === 1) {
+              return x;
+            }
+            return calcBezier(getTForX(x), mY1, mY2);
+          };
+        }
+
+        return bezier;
+      })();
+
+      /*
+       * UTILS
+       */
+      const clamp = (num, min, max) => Math.min(Math.max(min, num), max);
+
+      class MinPriorityQueue {
+        #heap = [];
+
+        constructor(heap = []) {
+          this.#heap = [...heap];
+        }
+
+        get length() {
+          return this.#heap.length;
+        }
+
+        peek() {
+          return this.#heap[0]?.value;
+        }
+
+        getAll() {
+          return this.#heap.map(({ value }) => value);
+        }
+
+        enqueue(priority, value) {
+          this.#heap.push({ priority, value });
+          this.#heapifyUp(this.length - 1);
+        }
+
+        dequeue() {
+          const removed = this.#heap[0].value;
+          const last = this.#heap.pop();
+          if (this.#heap.length > 0) {
+            this.#heap[0] = last;
+            this.#heapifyDown(0, this.#heap.length);
+          }
+          return removed;
+        }
+
+        clone() {
+          return new MinPriorityQueue(this.#heap);
+        }
+
+        #swap(i, j) {
+          [this.#heap[i], this.#heap[j]] = [this.#heap[j], this.#heap[i]];
+        }
+
+        #parentIdx(currentIdx) {
+          return Math.floor(currentIdx - 1 / 2);
+        }
+
+        #leftChildIdx(currentIdx) {
+          return 2 * currentIdx + 1;
+        }
+
+        #rightChildIdx(currentIdx) {
+          return 2 * currentIdx + 2;
+        }
+
+        #heapifyUp(currentIdx, endIdx = 0) {
+          while (currentIdx > endIdx) {
+            const parentIdx = this.#parentIdx(currentIdx);
+            if (
+              this.#heap[currentIdx].priority < this.#heap[parentIdx].priority
+            ) {
+              this.#swap(currentIdx, parentIdx);
+            }
+            currentIdx = parentIdx;
+          }
+        }
+
+        #heapifyDown(currentIdx, endIdx) {
+          while (true) {
+            const leftIdx = this.#leftChildIdx(currentIdx);
+            const rightIdx = this.#rightChildIdx(currentIdx);
+            let smallestIdx = currentIdx;
+
+            if (leftIdx < endIdx) {
+              if (
+                this.#heap[leftIdx].priority < this.#heap[currentIdx].priority
+              ) {
+                smallestIdx = leftIdx;
+              }
+              if (
+                rightIdx < endIdx &&
+                this.#heap[rightIdx].priority < this.#heap[smallestIdx].priority
+              ) {
+                smallestIdx = rightIdx;
+              }
+            }
+
+            if (smallestIdx !== currentIdx) {
+              this.#swap(currentIdx, smallestIdx);
+              currentIdx = smallestIdx;
+            } else break;
+          }
+        }
+      }
+
+      class Easing {
+        static linear() {
+          return (t) => t;
+        }
+
+        static easeIn() {
+          return cubicBezier(0.32, 0, 0.67, 0);
+        }
+
+        static easeOut() {
+          return cubicBezier(0.22, 0.61, 0.36, 1);
+        }
+
+        static easeInOut() {
+          return cubicBezier(0.45, 0.05, 0.55, 0.95);
+        }
+
+        static easeInBack() {
+          return cubicBezier(0.36, 0, 0.66, -0.56);
+        }
+      }
+
+      class Animation {
+        #clock = null;
+
+        #repeat = false;
+        #totalDuration = 0;
+        #allSteps = new MinPriorityQueue(); // priority is the begin time of the animation step
+        #runningSteps = new MinPriorityQueue(); // priority is the end time of the animation step
+        #remainingSteps = new MinPriorityQueue(); // part of the allSteps queue containing only animation steps that haven't begun
+        #groupedAnimations = {};
+
+        #status = "CREATED"; // CREATED, RUNNING, PAUSED, FINISHED
+        #lastFrameTime = 0;
+        #startTime = 0;
+
+        // fillMode - FORWARDS, BACKWARDS, BOTH
+        constructor(repeat = false) {
+          this.#repeat = repeat;
+        }
+
+        play() {
+          if (this.#status === "RUNNING") return;
+          if (this.#status === "FINISHED" || this.#status === "CREATED") {
+            this.#status = "RUNNING";
+            this.#reset();
+          } else if (this.#status === "PAUSED") {
+            this.#status = "RUNNING";
+          }
+          requestAnimationFrame(this.#update.bind(this));
+        }
+
+        pause() {
+          this.#status = "PAUSED";
+        }
+
+        get status() {
+          return this.#status;
+        }
+
+        add(animationName) {
+          this.#groupedAnimations[animationName] = {
+            startTime: this.#totalDuration,
+          };
+          return this;
+        }
+
+        to(object, toValues, config, animationName) {
+          this.#createStep(object, null, toValues, config, animationName);
+          return this;
+        }
+
+        from(object, fromValues, config, animationName) {
+          this.#createStep(object, fromValues, null, config, animationName);
+          return this;
+        }
+
+        sleep(duration, animationName) {
+          this.#createStep({}, {}, {}, { duration }, animationName);
+          return this;
+        }
+
+        run(fn, config, animationName) {
+          this.#saveStep({
+            fn,
+            startTime: this.#calcStartTime(animationName, config?.delay),
+            duration: config.duration,
+            easing: config.easing || Easing.linear(),
+            beforeUpdate: config.beforeUpdate,
+            onUpdate: config.onUpdate,
+            onFinish: config.onFinish,
+          });
+          return this;
+        }
+
+        #createStep(object, fromValues, toValues, config, animationName) {
+          this.#saveStep({
+            object,
+            startTime: this.#calcStartTime(animationName, config?.delay),
+            from: fromValues,
+            to: toValues,
+            duration: config.duration,
+            easing: config.easing || Easing.linear(),
+            beforeUpdate: config.beforeUpdate,
+            onUpdate: config.onUpdate,
+            onFinish: config.onFinish,
+          });
+        }
+
+        #calcStartTime(animationName, delay) {
+          return (
+            (animationName && this.#groupedAnimations[animationName]
+              ? this.#groupedAnimations[animationName].startTime
+              : this.#totalDuration) + (delay || 0)
+          );
+        }
+
+        #saveStep(step) {
+          this.#totalDuration = step.startTime + step.duration;
+          this.#allSteps.enqueue(step.startTime, step);
+          this.#remainingSteps.enqueue(step.startTime, step);
+        }
+
+        #update() {
+          for (const step of this.#runningSteps.getAll()) {
+            this.#updateStep(step);
+          }
+
+          this.#updateRunningSteps();
+          if (this.#status !== "RUNNING") return;
+          requestAnimationFrame(this.#update.bind(this));
+        }
+
+        #updateStep(step) {
+          const { easing, onUpdate, beforeUpdate } = step;
+          beforeUpdate?.();
+
+          const progress = this.#calcProgress(step);
+
+          if (step.object) {
+            Object.keys(step.from).forEach((key) => {
+              step.object[key] =
+                step.from[key] +
+                (step.to[key] - step.from[key]) * easing(progress);
+            });
+          } else {
+            step.fn(progress);
+          }
+
+          onUpdate?.(progress);
+        }
+
+        #updateRunningSteps() {
+          const elapsed = this.#clock.getElapsedTime() - this.#startTime;
+
+          while (this.#calcProgress(this.#runningSteps.peek()) === 1) {
+            this.#runningSteps.peek().onFinish?.();
+            this.#runningSteps.dequeue();
+          }
+
+          while (this.#remainingSteps.peek()?.startTime <= elapsed) {
+            const step = { ...this.#remainingSteps.dequeue() };
+            if (step.from) {
+              step.to = Object.fromEntries(
+                Object.keys(step.from).map((key) => [key, step.object[key]])
+              );
+            } else if (step.to) {
+              step.from = Object.fromEntries(
+                Object.keys(step.to).map((key) => [key, step.object[key]])
+              );
+            }
+            this.#runningSteps.enqueue(step.startTime + step.duration, step);
+          }
+
+          if (!this.#runningSteps.peek() && !this.#remainingSteps.peek()) {
+            this.#status = "FINISHED";
+            if (this.#repeat) this.play();
+          }
+        }
+
+        #calcProgress(step) {
+          if (!step) return 0;
+          const elapsed = this.#clock.getElapsedTime() - step.startTime;
+          const progress = elapsed / step.duration;
+          return clamp(progress, 0, 1);
+        }
+
+        #reset() {
+          this.#clock = new THREE.Clock();
+          this.#remainingSteps = this.#allSteps.clone();
+          this.#lastFrameTime = 0;
+          this.#startTime = 0;
+        }
+      }
+
+      /*
+       * SETUP
+       */
+      // Physics
+      Physijs.scripts.worker = "physijs_worker.js";
+      Physijs.scripts.ammo = "ammo.js";
+      // Canvas
+      const canvas = document.getElementById("webgl");
+      // Scene
+      const scene = new Physijs.Scene();
+      scene.setGravity(new THREE.Vector3(0, -70, 0));
+      scene.addEventListener("update", function () {
+        scene.simulate(undefined, 2);
+      });
+      // Statistics
+      const stats = new Stats();
+      stats.domElement.style.position = "absolute";
+      stats.domElement.style.left = "0px";
+      stats.domElement.style.top = "0px";
+      document.getElementById("stats").appendChild(stats.domElement);
+
+      /*
+       * SIZES
+       */
+      const SIZES = {
+        window: {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        },
+      };
+
+      /*
+       * COLORS
+       */
+      const COLORS = {
+        black: 0x00000,
+        white: 0xffffff,
+        gray: {
+          light: 0xeeeeee,
+        },
+        orange: 0xf15c00,
+        red: 0xef0006,
+        violet: 0x98009d,
+        blue: 0x0000a9,
+        cyan: 0x00cfc7,
+        green: 0x00e227,
+        yellow: 0xfff400,
+        gold: 0xffc300,
+      };
+
+      /*
+       * MATERIALS
+       */
+      const MATERIALS = {
+        basic: {
+          white: new THREE.MeshBasicMaterial({
+            color: COLORS.white,
+            side: THREE.DoubleSide,
+          }),
+        },
+      };
+
+      /*
+       * OBJECTS
+       */
+      class Plane extends Physijs.BoxMesh {
+        constructor(
+          color,
+          width,
+          depth,
+          height,
+          friction = 1,
+          restitution = 1.5,
+          widthSegments = 100,
+          depthSegments = 100
+        ) {
+          const geometry = new THREE.CubeGeometry(
+            depth,
+            height,
+            width,
+            widthSegments,
+            depthSegments
+          );
+          const material = new THREE.MeshLambertMaterial({
+            color,
+          });
+          super(
+            geometry,
+            Physijs.createMaterial(material, friction, restitution),
+            0
+          );
+          this.receiveShadow = true;
+        }
+      }
+
+      class Ball extends Physijs.SphereMesh {
+        constructor(
+          color,
+          radius,
+          friction = 0.4,
+          restitution = 1.65,
+          segments = 32
+        ) {
+          const geometry = new THREE.SphereGeometry(radius, segments, segments);
+          const material = new THREE.MeshPhongMaterial({
+            color,
+            reflectivity: 0.8,
+          });
+          super(
+            geometry,
+            Physijs.createMaterial(material, friction, restitution),
+            1
+          );
+          this.castShadow = true;
+          this.receiveShadow = true;
+        }
+      }
+
+      class BallSpawner {
+        #interval = null;
+
+        constructor(interval, colors, minRadius, maxRadius, position, onSpawn) {
+          this.interval = interval;
+          this.colors = colors;
+          this.minRadius = minRadius;
+          this.maxRadius = maxRadius;
+          this.position = position;
+          self.onSpawn = onSpawn;
+        }
+
+        start() {
+          if (this.#interval) this.stop();
+          this.#interval = setInterval(() => {
+            this.#spawn();
+          }, this.interval);
+        }
+
+        stop() {
+          if (this.#interval) clearInterval(this.#interval);
+          this.#interval = null;
+        }
+
+        #spawn() {
+          const color =
+            this.colors[Math.floor(Math.random() * this.colors.length)];
+          const radius =
+            Math.random() * (this.maxRadius - this.minRadius) + this.minRadius;
+          const ball = new Ball(color, radius);
+          ball.position.copy(this.position);
+          self.onSpawn?.(ball);
+          scene.add(ball);
+        }
+      }
+
+      const OBJECTS = {
+        planes: [],
+        firstBall: null,
+        lastBall: null,
+      };
+
+      // Create planes
+      for (let i = 0; i < 3; i++) {
+        const plane = new Plane(COLORS.gray.light, 75, 60, 2);
+        const multiplier = i % 2 === 1 ? -1 : 1;
+        plane.rotation.z = (multiplier * Math.PI) / 5;
+        plane.position.set(multiplier * 90, 225 + i * 75, 0);
+        OBJECTS.planes.push(plane);
+      }
+
+      const plane1 = new Plane(COLORS.gray.light, 100, 125, 15, 1, 0.5);
+      plane1.position.set(-150, 235, 0);
+      plane1.rotation.x = Math.PI / 3;
+      OBJECTS.planes.push(plane1);
+
+      // create ball spawner
+      const ballSpawner = new BallSpawner(
+        1000,
+        [
+          COLORS.orange,
+          COLORS.red,
+          COLORS.violet,
+          COLORS.blue,
+          COLORS.cyan,
+          COLORS.green,
+          COLORS.yellow,
+          COLORS.gold,
+        ],
+        5,
+        5,
+        new THREE.Vector3(95, 602.5, 2),
+        (ball) => {
+          if (!OBJECTS.firstBall) {
+            OBJECTS.firstBall = ball;
+            cameraAnimation.play();
+          }
+          OBJECTS.lastBall = ball;
+        }
+      );
+      ballSpawner.start();
+
+      // Add all objects to the scene
+      OBJECTS.planes.forEach((plane) => scene.add(plane));
+
+      /*
+       * LIGHTS
+       */
+      // Hemisphere
+      const hemisphereLight = new THREE.HemisphereLight(
+        COLORS.black,
+        COLORS.white
+      );
+      scene.add(hemisphereLight);
+
+      // Directional
+      const directionalLight = new THREE.DirectionalLight(COLORS.white);
+      directionalLight.position.set(0, 600, 400);
+      directionalLight.castShadow = true;
+      directionalLight.shadowCameraLeft = -1000;
+      directionalLight.shadowCameraTop = -1000;
+      directionalLight.shadowCameraRight = 1000;
+      directionalLight.shadowCameraBottom = 1000;
+      directionalLight.shadowCameraNear = 1;
+      directionalLight.shadowCameraFar = 2000;
+      directionalLight.shadowBias = -0.0001;
+      directionalLight.shadowCameraRadius = 5;
+      directionalLight.shadowMapWidth = directionalLight.shadowMapHeight = 4096;
+      directionalLight.shadowDarkness = 0.7;
+      scene.add(directionalLight);
+
+      // Spot
+      const spotLight = new THREE.SpotLight(COLORS.violet, 1, 1, 0.15);
+      spotLight.shadowCameraRadius = 1000;
+      spotLight.shadowCameraLeft = -1000;
+      spotLight.shadowCameraTop = 1000;
+      spotLight.shadowCameraRight = 1000;
+      spotLight.shadowCameraBottom = -1000;
+      spotLight.shadowMapWidth = spotLight.shadowMapHeight = 4096;
+      spotLight.position.set(0, 500, 400);
+      spotLight.castShadow = true;
+      scene.add(spotLight);
+
+      /*
+       * CAMERA
+       */
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        SIZES.window.width / SIZES.window.height,
+        0.1,
+        5000
+      );
+      camera.position.set(100, 500, 200);
+      const initialLookAt = new THREE.Vector3(95, 400, 2);
+      const finalLookAt = new THREE.Vector3(0, 200, 0);
+      camera.lookAt(initialLookAt);
+      scene.add(camera);
+
+      const controls = new THREE.OrbitControls(camera, canvas);
+      controls.enableDamping = true;
+
+      /*
+       * RENDERER
+       */
+      const renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: true,
+      });
+      renderer.setClearColor(new THREE.Color(0xeeeeee));
+      renderer.shadowMapEnabled = true;
+      renderer.shadowMapSoft = true;
+      renderer.shadowMapType = THREE.PCFShadowMap;
+      renderer.shadowMapAutoUpdate = true;
+
+      /*
+       * EVENTS
+       */
+      // Event handlers
+      const handleResize = () => {
+        // Update window sizes
+        const width = (SIZES.window.width = window.innerWidth);
+        const height = (SIZES.window.height = window.innerHeight);
+
+        // Update camera
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+
+        // Update renderer
+        renderer.setSize(width, height);
+      };
+
+      // Event listeners
+      window.addEventListener("resize", handleResize);
+
+      /*
+       * RENDER LOOP
+       */
+      const update = () => {
+        // Remove balls that fell out of the scene
+        for (const child of scene.children) {
+          if (child.position.y <= -50) {
+            scene.remove(child);
+          }
+        }
+        camera.updateProjectionMatrix();
+        // Update stats
+        stats.update();
+        // Render the next frame
+        renderer.render(scene, camera);
+        // Update physics
+        scene.simulate();
+        // Request the new animation frame
+        requestAnimationFrame(update);
+      };
+
+      /*
+       * ANIMATIONS
+       */
+      // Helpers
+      const calcProgressVector = (from, to, progress) =>
+        new THREE.Vector3(
+          from.x + (to.x - from.x) * progress,
+          from.y + (to.y - from.y) * progress,
+          from.z + (to.z - from.z) * progress
+        );
+
+      // Plane1 movement
+      new Animation(true)
+        .to(
+          plane1.position,
+          {
+            z: 50,
+          },
+          {
+            duration: 0.25,
+            easing: Easing.easeIn(),
+            beforeUpdate() {
+              plane1.__dirtyPosition = true;
+            },
+            onUpdate() {
+              plane1.__dirtyPosition = true;
+            },
+          }
+        )
+        .to(
+          plane1.position,
+          {
+            z: 0,
+          },
+          {
+            duration: 0.25,
+            easing: Easing.easeOut(),
+            beforeUpdate() {
+              plane1.__dirtyPosition = true;
+            },
+          }
+        )
+        .sleep(0.5)
+        .play();
+
+      // Camera animation
+      const cameraAnimation = new Animation()
+        .add("step1")
+        .to(spotLight, { distance: 1000 }, { duration: 2 }, "step1")
+        .to(
+          camera.position,
+          { x: -150, y: 400, z: -200 },
+          {
+            duration: 4,
+            easing: Easing.easeInOut(),
+            beforeUpdate() {
+              const ball = OBJECTS.firstBall;
+              spotLight.target = ball;
+              spotLight.color = ball.material.color;
+            },
+            onUpdate(progress) {
+              const ball = OBJECTS.firstBall;
+              const vector = calcProgressVector(
+                initialLookAt,
+                ball.position,
+                Math.min(1, progress * 2)
+              );
+              camera.lookAt(vector);
+            },
+          },
+          "step1"
+        )
+        .to(
+          camera.position,
+          { x: 100, y: 300, z: 200 },
+          {
+            duration: 4,
+            easing: Easing.easeInOut(),
+            onUpdate() {
+              camera.lookAt(OBJECTS.firstBall.position);
+            },
+          }
+        )
+        .to(
+          camera.position,
+          { x: -450, y: 400, z: 300 },
+          {
+            duration: 4,
+            easing: Easing.easeOut(),
+            onUpdate(progress) {
+              const vector = calcProgressVector(
+                OBJECTS.firstBall.position,
+                finalLookAt,
+                progress
+              );
+              camera.lookAt(vector);
+            },
+            onFinish() {
+              cameraMovementAnimation.play();
+            },
+          }
+        );
+
+      const cameraMovementAnimation = new Animation(true)
+        .to(
+          camera.position,
+          { x: 140, y: 585, z: 100 },
+          {
+            duration: 6.5,
+            easing: Easing.easeInOut(),
+            onUpdate() {
+              camera.lookAt(finalLookAt);
+            },
+          }
+        )
+        .to(
+          camera.position,
+          { x: -400, y: 400, z: 300 },
+          {
+            duration: 6.5,
+            easing: Easing.easeInOut(),
+            onUpdate() {
+              camera.lookAt(finalLookAt);
+            },
+          }
+        );
+
+      /*
+       * MAIN
+       */
+      handleResize();
+      update();
+    </script>
+  </body>
+</html>
