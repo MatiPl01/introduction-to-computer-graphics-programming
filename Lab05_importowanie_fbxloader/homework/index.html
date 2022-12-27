@@ -88,7 +88,7 @@
     <div id="stats"></div>
 
     <script type="module">
-      import * as THREE from "../build/three.module.js";
+      import * as THREE from "./build/three.module.js";
       import Stats from "./jsm/libs/stats.module.js";
       import { OrbitControls } from "./jsm/controls/OrbitControls.js";
       import { FBXLoader } from "./jsm/loaders/FBXLoader.js";
@@ -673,6 +673,8 @@
               child.castShadow = true;
               child.receiveShadow = true;
             });
+
+            console.log(object)
 
             this.#object = object;
             scene.add(this.#object);
