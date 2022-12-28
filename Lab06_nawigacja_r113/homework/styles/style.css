@@ -4,3 +4,9 @@ body {
   overflow: hidden;
   background-color: #000;
 }
+
+#stats {
+  position: fixed;
+  top: 0;
+  left: 0;
+}
