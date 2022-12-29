@@ -1,5 +1,6 @@
 import Scene from './scene.js';
-import { COLORS } from './constants.js';
+import Player from './models/player.js';
+import { COLORS, OBJECT } from './constants.js';
 
 /*
 * SETUP
@@ -29,6 +30,29 @@ renderer.setClearColor(new THREE.Color(COLORS.black));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
+// Scene loading finish handler
+const handleLoadingFinish = ({ player, objLoader }) => {
+  document.getElementById('overlay').classList.add('hidden');
+
+  const scale = 15;
+  player.setWeapons({
+    rifle: {
+      model: objLoader.get(OBJECT.uziGoldLongSilencer, scale),
+      ammo: objLoader.get(OBJECT.ammoUzi, scale),
+      position: new THREE.Vector3(.75, -.85, -1.5),
+    },
+    pistol: {
+      model: objLoader.get(OBJECT.pistol, scale),
+      ammo: objLoader.get(OBJECT.ammoPistol, scale),
+      position: new THREE.Vector3(.75, -.8, -1.2)
+    },
+    knife: {
+      model: objLoader.get(OBJECT.knifeSharp, scale),
+      position: new THREE.Vector3(.75, -.5, -1)
+    }
+  })
+}
+
 // Update screen size function
 const updateScreenSize = () => {
   // Update camera
@@ -44,7 +68,7 @@ const clock = new THREE.Clock();
 
 const updateFrame = (scene) => {
   stats.update();
-  scene.update(clock.getDelta());
+  scene.update(clock.getDelta(), clock.getElapsedTime());
   renderer.render(scene, camera);
   requestAnimationFrame(() => updateFrame(scene));
 };
@@ -55,7 +79,8 @@ window.addEventListener('resize', () => {
 });
 
 window.addEventListener('DOMContentLoaded', () => {
-  const scene = new Scene(camera, canvas);
+  const player = new Player(camera, 2);
+  const scene = new Scene(player, canvas, handleLoadingFinish);
   scene.initialize();
 
   const axesHelper = new THREE.AxesHelper(25);

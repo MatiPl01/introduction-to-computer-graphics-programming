@@ -21,11 +21,21 @@ export class FPVCamera extends THREE.Object3D {
     this.#keyboardInputController = keyboardInputController;
     this.#pitchObject.add(camera);
     this.#yawObject.add(this.#pitchObject);
+    player.yawObject = this.#yawObject;
     this.add(this.#yawObject);
   }
 
   get yawObject() {
     return this.#yawObject;
+  }
+
+  get direction() {
+    const direction = new THREE.Vector3(0, 0, -1);
+    const rotation = new THREE.Euler(0, 0, 0, "YXZ");
+    const result = new THREE.Vector3();
+    rotation.set(this.#pitchObject.rotation.x, this.#yawObject.rotation.y, 0);
+    result.copy(direction).applyEuler(rotation);
+    return result;
   }
 
   enable() {

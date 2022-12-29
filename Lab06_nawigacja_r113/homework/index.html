@@ -4,15 +4,35 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FPS Three.js</title>
+    <title>FPV Three.js</title>
     <link rel="stylesheet" href="./styles/style.css" />
 
     <script src="./lib/three.js"></script>
     <script src="./lib/stats.min.js"></script>
+    <script src="./lib/MLTLoader.js"></script>
+    <script src="./lib/OBJLoader.js"></script>
     <script type="module" src="./src/main.js" defer></script>
   </head>
   <body>
     <canvas id="webgl"></canvas>
     <div id="stats"></div>
+    <div id="overlay">
+      <h1 class="title">FPV Three.js</h1>
+      <div class="loader-wrapper">
+        <h2 class="loader-text">Loading</h2>
+        <div class="loader">
+          <div></div>
+          <div></div>
+          <div></div>
+        </div>
+        <div class="crosshair">
+          <div></div>
+          <div></div>
+          <div></div>
+          <div></div>
+        </div>
+      </div>
+      <h1>&nbsp;</h1>
+    </div>
   </body>
 </html>

@@ -1,24 +1,35 @@
-import { COLORS, MATERIALS } from './constants.js';
+import { COLORS, MATERIALS, OBJECT, WITHOUT_SHADOW } from './constants.js';
 import { KeyboardInputController, MouseInputController } from './controllers/input.js';
 import FullScreenController from './controllers/fullscreen.js';
 import { PlayerController } from './controllers/player.js';
-import { DarkCrate, LightCrate, MediumCrate } from './models/crate.js';
-import Player from './models/player.js';
+import { DarkCrate, LightCrate, MediumCrate } from './models/crates.js';
+import { ObjLoader } from './utils/loaders.js';
 
 // TODO - improve shadows quality
+// TODO - fix textures loading (missing sides)
+// TODO - add gun switching
+// TODO - create environment
+// TODO - fix ammo not working
 export default class Scene extends THREE.Scene {
   #keyboardInputController = new KeyboardInputController();
   #mouseInputController = new MouseInputController();
+  #objLoader = new ObjLoader(
+    Object.values(OBJECT),
+    WITHOUT_SHADOW,
+    this.#handleObjectsLoaded.bind(this)
+  );
   #fullScreenController;
   #playerController;
   #player;
   #canvas;
+  #onLoadFinished;
 
-  constructor(camera, canvas) {
+  constructor(player, canvas, onLoadFinished) {
     super();
 
     this.#canvas = canvas;
-    this.#player = new Player(camera, 2);
+    this.#player = player;
+    this.#onLoadFinished = onLoadFinished;
 
     this.#fullScreenController = new FullScreenController(canvas);
     this.#playerController = new PlayerController(
@@ -34,15 +45,22 @@ export default class Scene extends THREE.Scene {
     return this.#canvas;
   }
 
+  get player() {
+    return this.#player;
+  }
+
+  get objLoader() {
+    return this.#objLoader;
+  }
+
   initialize() {
     this.#renderPlane();
-    this.#renderObjects();
-    this.#renderLights();
+    this.#objLoader.load();
     this.#fullScreenController.initialize();
   }
 
-  update(timeElapsed) {
-    this.#playerController.update(timeElapsed);
+  update(timeElapsed, totalTimeElapsed) {
+    this.#playerController.update(timeElapsed, totalTimeElapsed);
   }
 
   notifyFullScreenChange(isFullScreen) {
@@ -62,9 +80,15 @@ export default class Scene extends THREE.Scene {
   }
 
   #renderObjects() {
+    const objLoader = this.#objLoader;
+
+    // Add Three.js objects
     this.add(new LightCrate(3, new THREE.Vector3(-5, 1.5, -5)));
     this.add(new MediumCrate(3, new THREE.Vector3(5, 1.5, -5)));
     this.add(new DarkCrate(3, new THREE.Vector3(5, 1.5, 5)));
+
+    // Add loaded objects
+    // this.add(objLoader.get(OBJECT.uziGoldLongSilencer, 50, new THREE.Vector3(0, 2, -5)));
   }
 
   #renderLights() {
@@ -81,5 +105,11 @@ export default class Scene extends THREE.Scene {
     spotLight.position.set(15, 30, 15);
     spotLight.castShadow = true;
     this.add(spotLight);
+  }
+
+  #handleObjectsLoaded() {
+    this.#renderObjects();
+    this.#renderLights();
+    this.#onLoadFinished(this);
   }
 }
