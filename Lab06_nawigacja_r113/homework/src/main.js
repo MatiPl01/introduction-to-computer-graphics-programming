@@ -30,27 +30,44 @@ renderer.setClearColor(new THREE.Color(COLORS.black));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
+// DOM elements
+const overlay = document.getElementById("overlay");
+const crosshair = document.getElementById('crosshair');
+const startBtn = document.getElementById('start-btn');
+
 // Scene loading finish handler
 const handleLoadingFinish = ({ player, objLoader }) => {
-  document.getElementById('overlay').classList.add('hidden');
+  overlay.classList.add('start');
+  startBtn.addEventListener('click', handleStart);
 
   const scale = 15;
   player.setWeapons({
     rifle: {
-      model: objLoader.get(OBJECT.uziGoldLongSilencer, scale),
+      model: objLoader.get(OBJECT.uziGold, scale),
       ammo: objLoader.get(OBJECT.ammoUzi, scale),
-      position: new THREE.Vector3(.75, -.85, -1.5),
+      position: new THREE.Vector3(.75, -.9, -1.5),
+      ammoOffset: new THREE.Vector3(0, .25, -.25),
+      ammoVelocity: 40,
+      shootingFrequency: 75
     },
     pistol: {
       model: objLoader.get(OBJECT.pistol, scale),
       ammo: objLoader.get(OBJECT.ammoPistol, scale),
-      position: new THREE.Vector3(.75, -.8, -1.2)
+      position: new THREE.Vector3(.75, -.8, -1.2),
+      ammoOffset: new THREE.Vector3(0, .2, -.25),
+      ammoVelocity: 25,
+      shootingFrequency: 25
     },
     knife: {
       model: objLoader.get(OBJECT.knifeSharp, scale),
       position: new THREE.Vector3(.75, -.5, -1)
     }
   })
+}
+
+// Handle start
+const handleStart = () => {
+  overlay.classList.add('hidden');
 }
 
 // Update screen size function
@@ -79,12 +96,9 @@ window.addEventListener('resize', () => {
 });
 
 window.addEventListener('DOMContentLoaded', () => {
-  const player = new Player(camera, 2);
+  const player = new Player(camera, crosshair, 2);
   const scene = new Scene(player, canvas, handleLoadingFinish);
   scene.initialize();
-
-  const axesHelper = new THREE.AxesHelper(25);
-  scene.add(axesHelper)
 
   updateScreenSize();
   updateFrame(scene);

@@ -30,6 +30,10 @@ export class ObjLoader extends THREE.MTLLoader {
       super.load(`${ObjLoader.DIR_PATH}/${fileName}.mtl`, materials => {
         materials.preload();
 
+        Object.values(materials.materials).forEach(material => {
+          material.side = THREE.DoubleSide;
+        })
+
         const objLoader = new THREE.OBJLoader();
         objLoader.setMaterials(materials);
 

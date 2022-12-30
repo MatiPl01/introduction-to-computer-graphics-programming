@@ -1,5 +1,8 @@
+import { WEAPONS } from "../models/player.js";
+
 export class KeyboardInputController {
   #keys = {
+    weapon: null,
     forward: false,
     backward: false,
     left: false,
@@ -40,6 +43,8 @@ export class KeyboardInputController {
   }
 
   #handleKeyChange(e, isPressed) {
+    this.#keys.weapon = null;
+
     switch (e.key) {
       case 'Down':
       case 'ArrowDown':
@@ -63,6 +68,15 @@ export class KeyboardInputController {
         break;
       case ' ':
         this.#keys.space = isPressed;
+        break;
+      case '1':
+        this.#keys.weapon = WEAPONS.rifle;
+        break;
+      case '2':
+        this.#keys.weapon = WEAPONS.pistol;
+        break;
+      case '3':
+        this.#keys.weapon = WEAPONS.knife;
         break;
     }
     this.#notifyObservers();

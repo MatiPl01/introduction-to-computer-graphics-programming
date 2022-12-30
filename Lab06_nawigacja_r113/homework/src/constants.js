@@ -1,18 +1,34 @@
 import { TextureLoader } from "./utils/loaders.js";
 
+export const CONFIG = Object.freeze({
+  planeSize: 100,
+  campfireSize: 20,
+  tentsCount: 6,
+  randomPebblesCount: 1000
+});
+
 export const COLORS = Object.freeze({
   white: 0xffffff,
-  black: 0x00000,
+  black: 0x000000,
+  green: 0x005425,
+  lightRed: 0xffcccc
 });
 
 export const MATERIALS = Object.freeze({
   phong: {
-    white: new THREE.MeshPhongMaterial({
-      color: COLORS.white,
+    green: new THREE.MeshPhongMaterial({
+      color: COLORS.green,
       side: THREE.DoubleSide
     })
   }
 });
+
+const loadSkyBox = (path, extension) => Object.fromEntries(
+  ["front", "back", "bottom", "top", "left", "right"].map((side) => [
+    side,
+    TextureLoader.load(`${path}_${side}.${extension}`)
+  ])
+);
 
 export const TEXTURES = Object.freeze({
   crate: {
@@ -31,7 +47,8 @@ export const TEXTURES = Object.freeze({
       bumpMap: TextureLoader.load("crate/dark/crate2_bump.png"),
       normalMap: TextureLoader.load("crate/dark/crate2_normal.png"),
     }
-  }
+  },
+  skyBox: loadSkyBox('skybox/clouds', 'jpg')
 });
 
 export const OBJECT = Object.freeze({
@@ -56,11 +73,11 @@ export const OBJECT = Object.freeze({
   ammoPistol: 'ammo_pistol',
   pistol: 'pistol',
   ammoUzi: 'ammo_uzi',
-  uziGoldLongSilencer: 'uziGoldLongSilencer'
+  uziGold: 'uziGold'
 });
 
 export const WITHOUT_SHADOW = [
   'knifeSharp',
   'pistol',
-  'uziGoldLongSilencer'
+  'uziGold'
 ];

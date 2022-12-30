@@ -1,6 +1,7 @@
-import { FPVCamera } from "./camera.js";
-import BulletsController from "./bullets.js";
+import { FPVCamera } from "./cameraController.js";
+import BulletsController from "./bulletsController.js";
 import { WEAPONS } from "../models/player.js";
+import { BulletFactory } from "../factory/bulletFactory.js";
 
 export class PlayerController {
   #bulletsController;
@@ -19,6 +20,7 @@ export class PlayerController {
     );
 
     mouseInputController.addObserver(this);
+    keyboardInputController.addObserver(this);
     scene.add(this.#fpvCamera);
   }
 
@@ -31,37 +33,49 @@ export class PlayerController {
     this.#fpvCamera.update(timeElapsed);
     this.#player.update(totalTimeElapsed);
     this.#bulletsController.update(timeElapsed);
-    if (this.#player.recoilFinished) this.#handleMousePressed(mouse);
+    this.#handleMousePressed(mouse);
   }
 
   notifyMouseEvent(mouse) {
     this.#handleMousePressed(mouse);
   }
 
+  notifyKeyboardEvent(keys) {
+    this.#handleKeyboardEvent(keys);
+  }
+
   #handleMousePressed({ left }) {
     if (left) {
       switch (this.#player.currentWeapon) {
         case WEAPONS.knife:
-          // TODO
+          if (this.#player.attackFinished) this.#attack();
           break;
         case WEAPONS.rifle:
         case WEAPONS.pistol:
-          this.#shot();
+          if (this.#player.recoilFinished) this.#shot();
           break;
       }
     }
   }
 
+  #handleKeyboardEvent(keys) {
+    if (keys.weapon && this.#player.currentWeapon !== keys.weapon) {
+      this.#player.switchWeapon(keys.weapon);
+    }
+  }
+
   #shot() {
-    const { ammo, model } = this.#player.weapons[this.#player.currentWeapon];
-    const position = model.position.clone();
-    position.addScaledVector(this.#fpvCamera.direction, 10)
-    const bullet = new THREE.Mesh(
-      new THREE.SphereGeometry(1, 10, 10),
-      new THREE.MeshBasicMaterial(0xffffff)
-    )
-    bullet.position.copy(position);
+    const bullet = BulletFactory.createFromWeapon(
+      this.#player.weapons[this.#player.currentWeapon],
+      this.#fpvCamera,
+      25
+    );
+
     this.#bulletsController.addBullet(bullet);
     this.#player.applyRecoil();
+  }
+
+  #attack() {
+    this.#player.attack();
   }
 }

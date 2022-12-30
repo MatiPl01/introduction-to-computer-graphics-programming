@@ -6,20 +6,24 @@ export const WEAPONS = Object.freeze({
 
 export default class Player {
   #camera;
+  #crosshair;
   #height;
   #weapons;
   #currentWeapon;
-  #weaponObject;
   #weaponY;
   #weaponZ;
   #yawObject;
-  #recoilStartTime;
+  #animationStartTime;
   #applyRecoil = false;
   #recoilFinished = true;
+  #startAttack = false;
   #recoilEnding = false;
+  #attackFinished = true;
+  #attackEnding = false;
 
-  constructor(camera, height) {
+  constructor(camera, crosshair, height) {
     this.#camera = camera;
+    this.#crosshair = crosshair;
     this.#height = height;
   }
 
@@ -47,17 +51,24 @@ export default class Player {
     return this.#recoilFinished;
   }
 
+  get attackFinished() {
+    return this.#attackFinished;
+  }
+
   setWeapons(weapons) {
     this.#weapons = weapons;
-    this.switchWeapon(WEAPONS.rifle)
+    this.switchWeapon(WEAPONS.rifle);
   }
 
   switchWeapon(weaponType) {
+    if (this.#currentWeapon) {
+      this.#camera.remove(this.#weapons[this.#currentWeapon].model);
+    }
     const { model, position } = this.#weapons[weaponType];
     this.#currentWeapon = weaponType;
-    this.#weaponObject = model;
+    this.#camera.add(model);
 
-    model.rotation.y = -Math.PI;
+    model.rotation.y = Math.PI;
     model.position.copy(position);
     this.#weaponY = model.position.y;
     this.#weaponZ = model.position.z;
@@ -65,39 +76,71 @@ export default class Player {
     if (weaponType === WEAPONS.knife) {
       model.rotation.x = -Math.PI / 12;
     }
-
-    this.#camera.add(model);
   }
 
   update(totalTimeElapsed) {
-    const model = this.#weaponObject;
-    if (!model) return;
+    if (!this.#currentWeapon) return;
+    const { model } = this.#weapons[this.#currentWeapon];
+
 
     model.position.y = this.#weaponY + Math.sin(
       totalTimeElapsed +
-      this.#yawObject.position.x / 3 +
-      this.#yawObject.position.z / 3
+      this.#yawObject.position.x,
+      this.#yawObject.position.z
     ) / 15;
 
-    if (this.#applyRecoil) {
-      this.#applyRecoil = false;
-      this.#recoilStartTime = totalTimeElapsed;
-    } else if (!this.#recoilFinished) {
-      const delta = totalTimeElapsed - this.#recoilStartTime;
-      const deltaZ = Math.sin(delta * 50) / 10;
-      model.position.z = this.#weaponZ + deltaZ;
+    const delta = totalTimeElapsed - this.#animationStartTime;
+    if (this.#currentWeapon === WEAPONS.knife) {
+      if (this.#startAttack) {
+        this.#animationStartTime = totalTimeElapsed;
+        this.#startAttack = false;
+      } else if (!this.#attackFinished) {
+        model.rotation.z = Math.sin(5 * delta) / 4;
+        model.rotation.x = -Math.PI / 12 - Math.sin(5 * delta) * 1.5;
+        model.rotation.y = Math.cos(5 * delta - 2) / 2;
+        model.position.z = this.#weaponZ - Math.sin(5 * delta) / 2;
+        model.position.y = this.#weaponY - Math.sin(5 * delta) / 4;
 
-      if (deltaZ < 0) this.#recoilEnding = true;
-      else if (this.#recoilEnding && deltaZ >= 0) {
-        this.#recoilFinished = true;
-        model.position.z = this.#weaponZ;
+        if (model.position.z < this.#weaponZ) this.#attackEnding = true;
+        else if (this.#attackEnding && model.position.z >= this.#weaponZ) {
+          this.#attackFinished = true;
+          model.rotation.z = 0;
+          model.rotation.x = -Math.PI / 12;
+          model.rotation.y = 0;
+          model.position.z = this.#weaponZ;
+          model.position.y = this.#weaponY;
+        }
+      }
+    } else {
+      if (this.#applyRecoil) {
+        this.#crosshair.classList.add('shot');
+        this.#applyRecoil = false;
+        this.#animationStartTime = totalTimeElapsed;
+      } else if (!this.#recoilFinished) {
+        const { shootingFrequency } = this.#weapons[this.#currentWeapon]
+        const deltaZ = Math.sin(delta * shootingFrequency) / 10;
+        model.position.z = this.#weaponZ + deltaZ;
+
+        if (deltaZ < 0) this.#recoilEnding = true;
+        else if (this.#recoilEnding && deltaZ >= 0) {
+          this.#recoilFinished = true;
+          model.position.z = this.#weaponZ;
+          this.#crosshair.classList.remove('shot');
+        }
       }
     }
   }
 
   applyRecoil() {
+    this.#crosshair.classList.remove('shot');
     this.#applyRecoil = true;
     this.#recoilEnding = false;
     this.#recoilFinished = false;
+  }
+
+  attack() {
+    this.#startAttack = true;
+    this.#attackEnding = false;
+    this.#attackFinished = false;
   }
 }

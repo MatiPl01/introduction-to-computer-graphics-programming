@@ -1,15 +1,12 @@
-import { COLORS, MATERIALS, OBJECT, WITHOUT_SHADOW } from './constants.js';
-import { KeyboardInputController, MouseInputController } from './controllers/input.js';
-import FullScreenController from './controllers/fullscreen.js';
-import { PlayerController } from './controllers/player.js';
-import { DarkCrate, LightCrate, MediumCrate } from './models/crates.js';
+import { COLORS, MATERIALS, OBJECT, TEXTURES, WITHOUT_SHADOW, CONFIG } from './constants.js';
+import { KeyboardInputController, MouseInputController } from './controllers/inputControllers.js';
+import FullScreenController from './controllers/fullscreenController.js';
+import { PlayerController } from './controllers/playerController.js';
 import { ObjLoader } from './utils/loaders.js';
+import { Random } from './utils/random.js';
 
-// TODO - improve shadows quality
 // TODO - fix textures loading (missing sides)
-// TODO - add gun switching
-// TODO - create environment
-// TODO - fix ammo not working
+
 export default class Scene extends THREE.Scene {
   #keyboardInputController = new KeyboardInputController();
   #mouseInputController = new MouseInputController();
@@ -54,9 +51,11 @@ export default class Scene extends THREE.Scene {
   }
 
   initialize() {
+    this.#renderSkyBox();
     this.#renderPlane();
     this.#objLoader.load();
     this.#fullScreenController.initialize();
+    this.fog = new THREE.FogExp2(COLORS.lightRed, 0.005);
   }
 
   update(timeElapsed, totalTimeElapsed) {
@@ -71,38 +70,82 @@ export default class Scene extends THREE.Scene {
 
   #renderPlane() {
     const plane = new THREE.Mesh(
-      new THREE.PlaneGeometry(25, 25, 25, 25),
-      MATERIALS.phong.white
+      new THREE.PlaneGeometry(CONFIG.planeSize, CONFIG.planeSize, CONFIG.planeSize / 2, CONFIG.planeSize / 2),
+      MATERIALS.phong.green
     );
     plane.rotation.x = -0.5 * Math.PI;
     plane.receiveShadow = true;
     this.add(plane);
   }
 
+  #renderSkyBox() {
+    const size = 3 * CONFIG.planeSize;
+    const skyBox = new THREE.Mesh(
+      new THREE.BoxGeometry(size, size, size),
+      new THREE.MeshFaceMaterial(
+        ["right", "left", "top", "bottom", "front", "back"].map(
+          (side) => {
+            return new THREE.MeshBasicMaterial({
+              map: TEXTURES.skyBox[side],
+              side: THREE.DoubleSide,
+            })
+          }
+        ))
+    );
+    skyBox.rotation.y = -Math.PI;
+    this.add(skyBox);
+  }
+
   #renderObjects() {
-    const objLoader = this.#objLoader;
+    const pebbles = [
+      OBJECT.stoneSmallH,
+      OBJECT.stoneSmallI,
+      OBJECT.stoneSmallTopA,
+      OBJECT.stoneSmallTopB
+    ]
 
-    // Add Three.js objects
-    this.add(new LightCrate(3, new THREE.Vector3(-5, 1.5, -5)));
-    this.add(new MediumCrate(3, new THREE.Vector3(5, 1.5, -5)));
-    this.add(new DarkCrate(3, new THREE.Vector3(5, 1.5, 5)));
+    const stones = [
+      ...pebbles,
+      OBJECT.stoneTallF,
+      OBJECT.stoneTallG,
+      OBJECT.stoneTallH,
+      OBJECT.stoneTallI,
+      OBJECT.stoneTallJ
+    ];
 
-    // Add loaded objects
-    // this.add(objLoader.get(OBJECT.uziGoldLongSilencer, 50, new THREE.Vector3(0, 2, -5)));
+    const tents = [
+      OBJECT.tentDetailedClosed,
+      OBJECT.tentDetailedOpen
+    ];
+
+    const trees = [
+      OBJECT.treePlateau,
+      OBJECT.treeSimple,
+      OBJECT.treeSmall,
+      OBJECT.treeSmallDark,
+      OBJECT.treeTall,
+      OBJECT.treeTallDark,
+    ]
+
+    // Generate environment
+    this.#generateMountains(stones);
+    this.#generateCampfire(tents);
+    this.#generatePebbles(pebbles);
+    this.#generateForest(trees);
   }
 
   #renderLights() {
-    const ambientLight = new THREE.AmbientLight(COLORS.white, .2);
+    const ambientLight = new THREE.AmbientLight(COLORS.white, .5);
     this.add(ambientLight);
 
-    const spotLight = new THREE.SpotLight(COLORS.white, 1, 100, Math.PI / 4);
+    const spotLight = new THREE.SpotLight(COLORS.white, .5, CONFIG.planeSize * 2, Math.PI / 3);
     spotLight.shadow.camera.radius = 10;
     spotLight.shadow.camera.left = -1000;
     spotLight.shadow.camera.top = 1000;
     spotLight.shadow.camera.right = 1000;
     spotLight.shadow.camera.bottom = -1000;
     spotLight.shadow.mapSize.width = spotLight.shadow.mapSize.height = 4096;
-    spotLight.position.set(15, 30, 15);
+    spotLight.position.set(CONFIG.planeSize / 4, CONFIG.planeSize / 2, CONFIG.planeSize / 4);
     spotLight.castShadow = true;
     this.add(spotLight);
   }
@@ -111,5 +154,85 @@ export default class Scene extends THREE.Scene {
     this.#renderObjects();
     this.#renderLights();
     this.#onLoadFinished(this);
+  }
+
+  #generateMountains(types) {
+    const h = CONFIG.planeSize / 2;
+    for (let i = -h; i <= h; i += 5) {
+      this.#generateStone(types, i + Math.random() - .5, Math.random() * 2 - h);
+    }
+    for (let i = -h; i <= h; i += 5) {
+      this.#generateStone(types, i + Math.random() - .5, Math.random() * 2 + h);
+    }
+    for (let i = -h; i <= h; i += 5) {
+      this.#generateStone(types, Math.random() * 2 - h, i + Math.random() - .5);
+    }
+    for (let i = -h; i <= h; i += 5) {
+      this.#generateStone(types, Math.random() * 2 + h, i + Math.random() - .5);
+    }
+  }
+
+  #generateStone(types, x, z) {
+    const size = 20 + Math.random() * 20;
+    const type = Random.choice(types);
+    const model = this.#objLoader.get(type, size, new THREE.Vector3(x, 0, z));
+    model.rotation.y = Math.random() * Math.PI;
+    this.add(model);
+  }
+
+  #generateCampfire(types) {
+    for (let i = 0; i < CONFIG.tentsCount; i++) {
+      const x = Math.sin(2 * Math.PI / CONFIG.tentsCount * i) * CONFIG.campfireSize / 2;
+      const z = Math.cos(2 * Math.PI / CONFIG.tentsCount * i) * CONFIG.campfireSize / 2;
+      const type = Random.choice(types);
+      const model = this.#objLoader.get(type, 6, new THREE.Vector3(x, 0, z));
+      model.rotation.y = Math.atan(x / z);
+      if (Math.sign(z) > 0) model.rotation.y += Math.PI;
+      this.add(model);
+    }
+  }
+
+  #generatePebble(types, x, z) {
+    const size = Math.random() / 4 + .25;
+    const type = Random.choice(types);
+    const model = this.#objLoader.get(type, size, new THREE.Vector3(x, -.1, z));
+    this.add(model);
+  }
+
+  #generatePebbles(types) {
+    for (let i = 0; i < CONFIG.randomPebblesCount; i++) {
+      this.#generatePebble(types, this.#randomPlanePosition(), this.#randomPlanePosition());
+    }
+  }
+
+  #randomPlanePosition() {
+    return Math.random() * CONFIG.planeSize - CONFIG.planeSize / 2;
+  }
+
+  #generateTree(types, x, z) {
+    const size = 4 + Math.random() * 4;
+    const type = Random.choice(types);
+    const model = this.#objLoader.get(type, size, new THREE.Vector3(x, 0, z));
+    this.add(model);
+  }
+
+  #generateForest(trees) {
+    for (let z = -CONFIG.planeSize / 2 + 10; z <= CONFIG.planeSize / 2 - 15;) {
+      z += 4 + Math.random() * 3;
+      const campfireOffset = (CONFIG.planeSize - Math.abs(z)) / 3 - 10;
+      for (let x = -CONFIG.planeSize / 2 + 5; x < -campfireOffset;) {
+        x += 4 + Math.random() * 3;
+        this.#generateTree(trees, x, z);
+      }
+    }
+
+    for (let z = -CONFIG.planeSize / 2 + 10; z <= CONFIG.planeSize / 2 - 15;) {
+      z += 4 + Math.random() * 3;
+      const campfireOffset = (CONFIG.planeSize - Math.abs(z)) / 3 - 10;
+      for (let x = campfireOffset; x < CONFIG.planeSize / 2 - 10;) {
+        x += 4 + Math.random() * 3;
+        this.#generateTree(trees, x, z);
+      }
+    }
   }
 }

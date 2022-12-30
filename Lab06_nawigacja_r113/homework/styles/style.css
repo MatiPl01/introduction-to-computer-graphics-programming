@@ -17,6 +17,12 @@ body {
   background-color: #000;
 }
 
+button {
+  background-color: transparent;
+  cursor: pointer;
+  border: none;
+}
+
 #stats {
   position: fixed;
   top: 0;
@@ -33,6 +39,15 @@ body {
   align-items: center;
   justify-content: space-around;
   transition: all var(--transition-duration) ease-in;
+}
+
+#start-btn {
+  position: absolute;
+  text-transform: uppercase;
+  font-size: 2rem;
+  color: #fff;
+  transition: all 0.3s ease-in;
+  z-index: 1;
 }
 
 .title {
@@ -88,6 +103,12 @@ body {
   width: calc(100% - 2 * var(--border-width));
   height: calc(100% - 2 * var(--border-width));
   animation: loader-3 3s linear infinite;
+}
+
+@keyframes anim-blink {
+  to {
+    opacity: 0.25;
+  }
 }
 
 @keyframes loader-1 {
@@ -163,6 +184,21 @@ body {
   transform: translate(0.65rem, -50%);
 }
 
+#overlay.start .loader-text {
+  transform: scale(0.5);
+  opacity: 0;
+}
+
+#overlay:not(.start) #start-btn {
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.5);
+}
+
+#overlay.start #start-btn {
+  animation: anim-blink 1s infinite alternate;
+}
+
 #overlay:not(.hidden) .crosshair {
   transform: scale(1.25);
   opacity: 0;
@@ -171,6 +207,12 @@ body {
 #overlay.hidden {
   pointer-events: none;
   background-color: transparent;
+}
+
+#overlay.hidden #start-btn {
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.5);
 }
 
 #overlay.hidden .loader-wrapper {
@@ -188,12 +230,47 @@ body {
   opacity: 0;
 }
 
-#overlay.hidden .loader-text {
-  transform: scale(0.5);
-  opacity: 0;
-}
-
 #overlay.hidden .title {
   transform: translateY(-5rem);
   opacity: 0;
+}
+
+@keyframes move-left {
+  50% {
+    left: -10%;
+  }
+}
+
+@keyframes move-top {
+  50% {
+    top: -10%;
+  }
+}
+
+@keyframes move-right {
+  50% {
+    right: -10%;
+  }
+}
+
+@keyframes move-bottom {
+  50% {
+    bottom: -10%;
+  }
+}
+
+.crosshair.shot div:first-child {
+  animation: move-top 0.3s;
+}
+
+.crosshair.shot div:nth-child(2) {
+  animation: move-bottom 0.3s;
+}
+
+.crosshair.shot div:nth-child(3) {
+  animation: move-left 0.3s;
+}
+
+.crosshair.shot div:last-child {
+  animation: move-right 0.3s;
 }

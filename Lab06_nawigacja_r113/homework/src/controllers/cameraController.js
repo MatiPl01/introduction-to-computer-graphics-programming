@@ -1,4 +1,4 @@
-import GravityController from "./gravity.js";
+import GravityController from "./gravityController.js";
 
 export class FPVCamera extends THREE.Object3D {
   #yawObject = new THREE.Object3D();
@@ -29,11 +29,15 @@ export class FPVCamera extends THREE.Object3D {
     return this.#yawObject;
   }
 
+  get pitchObject() {
+    return this.#pitchObject;
+  }
+
   get direction() {
     const direction = new THREE.Vector3(0, 0, -1);
     const rotation = new THREE.Euler(0, 0, 0, "YXZ");
-    const result = new THREE.Vector3();
     rotation.set(this.#pitchObject.rotation.x, this.#yawObject.rotation.y, 0);
+    const result = new THREE.Vector3();
     result.copy(direction).applyEuler(rotation);
     return result;
   }
@@ -56,10 +60,22 @@ export class FPVCamera extends THREE.Object3D {
     velocity.y -= .25 * this.#gravityController.gravity * timeElapsed;
 
     if (this.#enabled) {
-      if (keys.forward) velocity.z -= 1.5 * timeElapsed;
-      if (keys.backward) velocity.z += 1.5 * timeElapsed;
-      if (keys.left) velocity.x -= 1.5 * timeElapsed;
-      if (keys.right) velocity.x += 1.5 * timeElapsed;
+      if (keys.forward) {
+        if (this.left === this.right) velocity.z -= timeElapsed / 2;
+        else velocity.z -= timeElapsed / 4;
+      };
+      if (keys.backward) {
+        if (this.left === this.right) velocity.z += timeElapsed / 2;
+        else velocity.z += timeElapsed / 4;
+      }
+      if (keys.left) {
+        if (this.forward === this.backward) velocity.x -= timeElapsed / 2;
+        else velocity.x -= timeElapsed / 4;
+      }
+      if (keys.right) {
+        if (this.forward === this.backward) velocity.x += timeElapsed / 2;
+        else velocity.x += timeElapsed / 4;
+      };
     }
 
     yawObject.translateX(velocity.x);
