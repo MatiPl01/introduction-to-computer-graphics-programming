@@ -5,8 +5,6 @@ import { PlayerController } from './controllers/playerController.js';
 import { ObjLoader } from './utils/loaders.js';
 import { Random } from './utils/random.js';
 
-// TODO - fix textures loading (missing sides)
-
 export default class Scene extends THREE.Scene {
   #keyboardInputController = new KeyboardInputController();
   #mouseInputController = new MouseInputController();
@@ -132,6 +130,7 @@ export default class Scene extends THREE.Scene {
     this.#generateCampfire(tents);
     this.#generatePebbles(pebbles);
     this.#generateForest(trees);
+    this.add(this.#objLoader.get(OBJECT.campfire, 2, new THREE.Vector3(0, 0, 0)));
   }
 
   #renderLights() {

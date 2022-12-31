@@ -32,7 +32,7 @@ button {
 #overlay {
   position: fixed;
   inset: 0;
-  background-color: #000;
+  background-color: rgb(27, 27, 27);
   z-index: 1;
   display: flex;
   flex-direction: column;
@@ -273,4 +273,155 @@ button {
 
 .crosshair.shot div:last-child {
   animation: move-right 0.3s;
+}
+
+.instructions {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0.5);
+  background-color: rgba(27, 27, 27, 0.75);
+  box-shadow: 0 0 1rem rgba(0, 0, 0, 0.5);
+  border-radius: 1rem;
+  padding: 1.25rem 2.5rem;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.5s 0.5s cubic-bezier(0.075, 0.82, 0.165, 1);
+  z-index: 10;
+}
+
+.instructions__heading {
+  color: #fff;
+  text-shadow: 0 0 0.25rem rgba(0, 0, 0, 0.5);
+  margin-bottom: 2rem;
+  margin-top: 0.5rem;
+  font-size: 2.5rem;
+}
+
+.instructions__list {
+  list-style-type: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 0;
+}
+
+.instructions__item {
+  display: flex;
+  gap: 3rem;
+  align-items: center;
+  position: relative;
+}
+
+.instructions__item:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  bottom: -1rem;
+  width: 100%;
+  height: 2px;
+  background-color: rgb(131, 131, 131);
+}
+
+.instructions__controls {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  align-items: center;
+  justify-content: flex-end;
+  position: relative;
+  flex-grow: 1;
+}
+
+.instructions__controls::before {
+  content: "";
+  position: absolute;
+  height: 100%;
+  width: 2px;
+  background-color: rgb(131, 131, 131);
+  right: -1.5rem;
+}
+
+.instructions__movement {
+  display: grid;
+  grid-template-areas:
+    ".    up   ."
+    "left down right";
+  gap: 0.5rem;
+}
+
+.instructions__movement .instructions__button:first-child {
+  grid-area: up;
+}
+
+.instructions__movement .instructions__button:nth-child(2) {
+  grid-area: left;
+}
+
+.instructions__movement .instructions__button:nth-child(3) {
+  grid-area: down;
+}
+
+.instructions__movement .instructions__button:nth-child(4) {
+  grid-area: right;
+}
+
+.instructions__button {
+  background-color: rgb(240, 237, 237);
+  border-radius: 0.25rem;
+  min-width: 4rem;
+  height: 4rem;
+  padding: 1rem 1.5rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 1.5rem;
+  box-shadow: 0 0 0.5rem rgba(0, 0, 0, 0.25);
+}
+
+.instructions__icon {
+  width: 5rem;
+  height: 5rem;
+  filter: invert(1) drop-shadow(0 0 0.5rem rgba(0, 0, 0, 0.5));
+}
+
+.instructions__text {
+  font-size: 1.75rem;
+  color: #f1f1f1;
+  text-shadow: 0 0 0.25rem rgba(0, 0, 0, 0.25);
+  width: 17.5rem;
+  min-width: 17.5rem;
+}
+
+.instructions__close-button {
+  position: absolute;
+  right: 1.5rem;
+  top: 1.5rem;
+  width: 2rem;
+  height: 2rem;
+  filter: drop-shadow(0 0 0.5rem rgba(0, 0, 0, 0.25));
+}
+
+.instructions__close-button::before,
+.instructions__close-button::after {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  background-color: #fff;
+  top: 50%;
+  left: 50%;
+}
+
+.instructions__close-button::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.instructions__close-button::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.instructions.visible {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+  visibility: visible;
 }

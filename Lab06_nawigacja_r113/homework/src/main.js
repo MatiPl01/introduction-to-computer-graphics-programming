@@ -34,11 +34,13 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const overlay = document.getElementById("overlay");
 const crosshair = document.getElementById('crosshair');
 const startBtn = document.getElementById('start-btn');
+const instructions = document.getElementById('instructions');
+const instructionsCloseBtn = document.getElementById('instructions-close');
 
 // Scene loading finish handler
 const handleLoadingFinish = ({ player, objLoader }) => {
   overlay.classList.add('start');
-  startBtn.addEventListener('click', handleStart);
+  startBtn.addEventListener('click', () => handleStart(player));
 
   const scale = 15;
   player.setWeapons({
@@ -66,8 +68,13 @@ const handleLoadingFinish = ({ player, objLoader }) => {
 }
 
 // Handle start
-const handleStart = () => {
+const handleStart = (player) => {
   overlay.classList.add('hidden');
+  instructions.classList.add('visible');
+  instructionsCloseBtn.addEventListener('click', () => {
+    instructions.classList.remove('visible');
+    player.enableShooting();
+  })
 }
 
 // Update screen size function

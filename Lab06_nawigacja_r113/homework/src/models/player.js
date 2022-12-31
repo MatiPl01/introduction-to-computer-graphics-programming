@@ -14,6 +14,7 @@ export default class Player {
   #weaponZ;
   #yawObject;
   #animationStartTime;
+  #shootingEnabled = false
   #applyRecoil = false;
   #recoilFinished = true;
   #startAttack = false;
@@ -48,11 +49,15 @@ export default class Player {
   }
 
   get recoilFinished() {
-    return this.#recoilFinished;
+    return this.#recoilFinished && this.#shootingEnabled;
   }
 
   get attackFinished() {
-    return this.#attackFinished;
+    return this.#attackFinished && this.#shootingEnabled;
+  }
+
+  enableShooting() {
+    this.#shootingEnabled = true;
   }
 
   setWeapons(weapons) {

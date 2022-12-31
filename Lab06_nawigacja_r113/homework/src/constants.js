@@ -69,6 +69,7 @@ export const OBJECT = Object.freeze({
   stoneSmallI: 'stone_smallI',
   stoneSmallTopA: 'stone_smallTopA',
   stoneSmallTopB: 'stone_smallTopB',
+  campfire: 'campfire',
   knifeSharp: 'knife_sharp',
   ammoPistol: 'ammo_pistol',
   pistol: 'pistol',

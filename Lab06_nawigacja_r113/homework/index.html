@@ -16,24 +16,96 @@
   <body>
     <canvas id="webgl"></canvas>
     <div id="stats"></div>
-    <div id="overlay">
+
+    <article id="overlay">
       <h1 class="title">FPV Three.js</h1>
       <div class="loader-wrapper">
         <h2 class="loader-text">Loading</h2>
         <button id="start-btn">Press to start</button>
-        <div class="loader">
+        <section class="loader">
           <div></div>
           <div></div>
           <div></div>
-        </div>
-        <div class="crosshair" id="crosshair">
+        </section>
+        <section class="crosshair" id="crosshair">
           <div></div>
           <div></div>
           <div></div>
           <div></div>
-        </div>
+        </section>
       </div>
       <h1>&nbsp;</h1>
-    </div>
+    </article>
+
+    <article id="instructions" class="instructions">
+      <button
+        class="instructions__close-button"
+        id="instructions-close"
+        title="Close instructions"
+      >
+        &nbsp;
+      </button>
+
+      <h2 class="instructions__heading">Instructions</h2>
+      <ul class="instructions__list">
+        <li class="instructions__item">
+          <section class="instructions__controls">
+            <div class="instructions__movement instructions__movement--wasd">
+              <button class="instructions__button">w</button>
+              <button class="instructions__button">a</button>
+              <button class="instructions__button">s</button>
+              <button class="instructions__button">d</button>
+            </div>
+            <div class="instructions__movement instructions__movement--arrows">
+              <button class="instructions__button">&uarr;</button>
+              <button class="instructions__button">&larr;</button>
+              <button class="instructions__button">&darr;</button>
+              <button class="instructions__button">&rarr;</button>
+            </div>
+          </section>
+          <section class="instructions__text">Movement</section>
+        </li>
+
+        <li class="instructions__item">
+          <section class="instructions__controls">
+            <img
+              src="resources/icons/mouse.png"
+              alt="Mouse"
+              class="instructions__icon"
+            />
+          </section>
+          <section class="instructions__text">
+            Mousemove - rotate camera
+          </section>
+        </li>
+
+        <li class="instructions__item">
+          <section class="instructions__controls">
+            <img
+              src="resources/icons/left-click.png"
+              alt="Left click"
+              class="instructions__icon"
+            />
+          </section>
+          <section class="instructions__text">Shoot / Attack</section>
+        </li>
+
+        <li class="instructions__item">
+          <section class="instructions__controls">
+            <button class="instructions__button">space</button>
+          </section>
+          <section class="instructions__text">Jump</section>
+        </li>
+
+        <li class="instructions__item">
+          <section class="instructions__controls">
+            <button class="instructions__button">1</button>
+            <button class="instructions__button">2</button>
+            <button class="instructions__button">3</button>
+          </section>
+          <section class="instructions__text">Switch weapon</section>
+        </li>
+      </ul>
+    </article>
   </body>
 </html>
